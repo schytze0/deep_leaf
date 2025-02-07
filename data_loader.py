@@ -2,29 +2,19 @@ import os
 import kagglehub
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from config import TRAIN_PATH, VALID_PATH, IMG_SIZE, BATCH_SIZE, ROOT_FOLDER
+from config import TRAIN_PATH, VALID_PATH, IMG_SIZE, BATCH_SIZE, ROOT_FOLDER, KAGGLE_USERNAME, KAGGLE_KEY
 
 def setup_kaggle_auth():
     """
-    Sets up Kaggle API authentication dynamically based on the active GitHub user.
+    Sets up Kaggle API authentication dynamically based on `.env` configuration.
     """
-    # Detect GitHub user from environment variables
-    github_user = os.getenv("GITHUB_ACTOR", "default_user").upper()  # Get GitHub username
-
-    # Construct the environment variable names for Kaggle credentials
-    kaggle_username_env = f"KAGGLE_USERNAME_{github_user}"
-    kaggle_key_env = f"KAGGLE_KEY_{github_user}"
-
-    # Retrieve credentials from environment
-    kaggle_username = os.getenv(kaggle_username_env, "")
-    kaggle_key = os.getenv(kaggle_key_env, "")
-
-    if kaggle_username and kaggle_key:
-        os.environ["KAGGLE_USERNAME"] = kaggle_username
-        os.environ["KAGGLE_KEY"] = kaggle_key
+    # Directly use variables from config.py
+    if KAGGLE_USERNAME and KAGGLE_KEY:
+        os.environ["KAGGLE_USERNAME"] = KAGGLE_USERNAME
+        os.environ["KAGGLE_KEY"] = KAGGLE_KEY
+        print("Kaggle API credentials successfully set.")
     else:
-        print(f"Kaggle API credentials not found for user {github_user}.")
-        print("Make sure you have added your credentials as GitHub Secrets.")
+        print("Kaggle API credentials are MISSING. Ensure they are correctly set in the .env file.")
 
 def download_dataset():
     """
@@ -32,11 +22,15 @@ def download_dataset():
     """
     setup_kaggle_auth()  # Ensure Kaggle API authentication is set
 
-    if not os.path.exists(ROOT_FOLDER):
+    dataset_path = os.path.expanduser("~/.cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset")
+
+    if not os.path.exists(dataset_path) or not os.listdir(dataset_path):
         print("Downloading dataset from KaggleHub...")
-        kagglehub.dataset_download("vipoooool/new-plant-diseases-dataset", path=ROOT_FOLDER, force=False)
+        downloaded_path = kagglehub.dataset_download("vipoooool/new-plant-diseases-dataset")
+        print(f"Dataset successfully downloaded to: {downloaded_path}")
     else:
-        print("Dataset already exists. Skipping download.")
+        print("Dataset already exists at {dataset_path}. Skipping download.")
+
 
 def load_data():
     """

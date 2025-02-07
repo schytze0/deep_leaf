@@ -3,16 +3,21 @@ import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path, override=True)
+else:
+    print("Warning: .env file not found!")
 
 # Kaggle API Credentials (User-Specific)
 GITHUB_ACTOR = os.getenv("GITHUB_ACTOR", "default_user").upper()  # Detect GitHub username
 
-KAGGLE_USERNAME = os.getenv(f"KAGGLE_USERNAME_{GITHUB_ACTOR}", "")
-KAGGLE_KEY = os.getenv(f"KAGGLE_KEY_{GITHUB_ACTOR}", "")
+KAGGLE_USERNAME = os.getenv(f"KAGGLE_USERNAME_{GITHUB_ACTOR}") or os.getenv("KAGGLE_USERNAME", "")
+KAGGLE_KEY = os.getenv(f"KAGGLE_KEY_{GITHUB_ACTOR}") or os.getenv("KAGGLE_KEY", "")
 
-# Root directory for the dataset
-ROOT_FOLDER = "/root/.cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset/versions/2"
+# Define a dataset storage directory inside the user's home
+HOME_DIR = os.path.expanduser("~")  
+ROOT_FOLDER = os.path.join(HOME_DIR, ".cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset/versions/2")
 DATA_DIR = os.path.join(ROOT_FOLDER, "new plant diseases dataset(augmented)/New Plant Diseases Dataset(Augmented)/")
 
 # Define paths for training, validation, and testing
