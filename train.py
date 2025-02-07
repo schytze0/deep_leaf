@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras import optimizers, callbacks
 from data_loader import load_data
 from model import build_vgg16_model
-from config import MODEL_PATH, EPOCHS
+from config import MODEL_PATH, HISTORY_PATH, EPOCHS
 
 def train_model():
     """
@@ -25,7 +25,7 @@ def train_model():
     checkpoint = callbacks.ModelCheckpoint(MODEL_PATH, save_best_only=True, monitor='val_accuracy', mode='max')
 
     print("Training classification head...")
-    model.fit(train_data, validation_data=val_data, epochs=int(EPOCHS*0.7), callbacks=[checkpoint])
+    history_1 = model.fit(train_data, validation_data=val_data, epochs=int(EPOCHS*0.7), callbacks=[checkpoint])
 
     # Step 2: Fine-tune the last layers of the base model
     print("Fine-tuning model...")
@@ -35,10 +35,26 @@ def train_model():
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
 
-    model.fit(train_data, validation_data=val_data, epochs=int(EPOCHS*0.3), callbacks=[checkpoint])
+    history_2 = model.fit(train_data, validation_data=val_data, epochs=int(EPOCHS*0.3), callbacks=[checkpoint])
 
     model.save(MODEL_PATH, save_format='keras')
     print(f"Training completed. Model saved at {MODEL_PATH}")
+
+    # Combine both training histories
+    history = {
+        "accuracy": history_1.history["accuracy"] + history_2.history["accuracy"],
+        "val_accuracy": history_1.history["val_accuracy"] + history_2.history["val_accuracy"],
+        "loss": history_1.history["loss"] + history_2.history["loss"],
+        "val_loss": history_1.history["val_loss"] + history_2.history["val_loss"]
+    }
+
+    # Save history as JSON
+    with open(HISTORY_PATH, "w") as f:
+        json.dump(history, f)
+
+    print(f"Training completed. Model saved at {MODEL_PATH}")
+    print(f"Training history saved at {HISTORY_PATH}")
+
 
 if __name__ == "__main__":
     train_model()
