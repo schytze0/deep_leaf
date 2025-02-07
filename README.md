@@ -49,6 +49,7 @@ Step 1: Get Your Kaggle API Key
 
 Go to Kaggle Account Settings.
 Click "Create New API Token", which downloads kaggle.json.
+
 Step 2: Add Credentials as GitHub Secrets
 
 Go to GitHub Repo → Settings → Secrets → Actions → New Repository Secret
