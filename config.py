@@ -1,4 +1,5 @@
 import os
+import datetime
 
 # Kaggle API Credentials (loaded from environment variables)
 KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME", "")
@@ -25,3 +26,11 @@ EPOCHS = 50
 # Ensure the model directory exists
 if not os.path.exists(MODEL_DIR):
     os.makedirs(MODEL_DIR)
+
+# Logging & History paths
+LOGS_DIR = "logs"
+os.makedirs(LOGS_DIR, exist_ok=True)  # Ensure logs directory exists
+
+# Generate timestamp for unique history files
+TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+HISTORY_PATH = os.path.join(LOGS_DIR, f"history_{TIMESTAMP}.json")
