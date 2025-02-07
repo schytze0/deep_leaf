@@ -18,7 +18,7 @@
 | `utils.py`            | Loads & **plots training history** (accuracy & loss). |
 | `requirements.txt`    | Lists **dependencies** for setting up the environment. |
 | `logs/` _(Folder)_    | Stores **training history (`history_*.json`)**. |
-| `models/` _(Folder)_  | Stores **trained models (`.h5`)**. |
+| `models/` _(Folder)_  | Stores **trained models (`.keras`)**. |
 
 ---
 
@@ -27,8 +27,8 @@ Follow these steps to get started:
 
 ### **1️⃣ Fork & Clone the Repositorry**
 ```sh
-git clone https://github.com/your-org/deep-leaf.git
-cd deep-leaf
+git clone https://github.com/schytze0/deep_leaf.git
+cd deep_leaf
 
 
 ### **2️⃣Fo Create a virtual environment**
