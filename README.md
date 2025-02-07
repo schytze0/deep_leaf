@@ -55,7 +55,7 @@ Step 2: Add Credentials as GitHub Secrets
 Go to GitHub Repo → Settings → Secrets → Actions → New Repository Secret
 For each team member, add:
 
-Secret Name	Value
+Secret Name		Value
 KAGGLE_USERNAME_YOURNAME -> "your-kaggle-username"
 KAGGLE_KEY_YOURNAME -> "your-kaggle-api-key"
 
