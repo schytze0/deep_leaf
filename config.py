@@ -1,9 +1,11 @@
 import os
 import datetime
 
-# Kaggle API Credentials (loaded from environment variables)
-KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME", "")
-KAGGLE_KEY = os.getenv("KAGGLE_KEY", "")
+# Kaggle API Credentials (User-Specific)
+GITHUB_ACTOR = os.getenv("GITHUB_ACTOR", "default_user").upper()  # Detect GitHub username
+
+KAGGLE_USERNAME = os.getenv(f"KAGGLE_USERNAME_{GITHUB_ACTOR}", "")
+KAGGLE_KEY = os.getenv(f"KAGGLE_KEY_{GITHUB_ACTOR}", "")
 
 # Root directory for the dataset
 ROOT_FOLDER = "/root/.cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset/versions/2"
