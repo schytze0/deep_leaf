@@ -8,9 +8,10 @@ KAGGLE_KEY = os.getenv("KAGGLE_KEY", "")
 ROOT_FOLDER = "/root/.cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset/versions/2"
 DATA_DIR = os.path.join(ROOT_FOLDER, "new plant diseases dataset(augmented)/New Plant Diseases Dataset(Augmented)/")
 
-# Define paths for training and validation
+# Define paths for training, validation, and testing
 TRAIN_PATH = os.path.join(DATA_DIR, "train")
 VALID_PATH = os.path.join(DATA_DIR, "valid")
+TEST_PATH = os.path.join(ROOT_FOLDER, "test/test"
 
 # Model save path
 MODEL_DIR = "models"  # Directory to store trained models
@@ -19,7 +20,7 @@ MODEL_PATH = os.path.join(MODEL_DIR, "plant_disease_model.keras")  # Path for sa
 # Training parameters
 BATCH_SIZE = 32
 IMG_SIZE = (224, 224)
-EPOCHS = 20
+EPOCHS = 50
 
 # Ensure the model directory exists
 if not os.path.exists(MODEL_DIR):
