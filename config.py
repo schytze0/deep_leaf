@@ -14,7 +14,7 @@ VALID_PATH = os.path.join(DATA_DIR, "valid")
 
 # Model save path
 MODEL_DIR = "models"  # Directory to store trained models
-MODEL_PATH = os.path.join(MODEL_DIR, "plant_disease_model.h5")  # Path for saving/loading the model
+MODEL_PATH = os.path.join(MODEL_DIR, "plant_disease_model.keras")  # Path for saving/loading the model
 
 # Training parameters
 BATCH_SIZE = 32

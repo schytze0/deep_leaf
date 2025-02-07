@@ -37,7 +37,7 @@ def train_model():
 
     model.fit(train_data, validation_data=val_data, epochs=int(EPOCHS*0.3), callbacks=[checkpoint])
 
-    model.save(MODEL_PATH)
+    model.save(MODEL_PATH, save_format='keras')
     print(f"Training completed. Model saved at {MODEL_PATH}")
 
 if __name__ == "__main__":
