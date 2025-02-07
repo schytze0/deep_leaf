@@ -29,6 +29,7 @@ Follow these steps to get started:
 ```sh
 git clone https://github.com/schytze0/deep_leaf.git
 cd deep_leaf
+```
 
 
 ### **2️⃣Fo Create a virtual environment**
@@ -38,7 +39,7 @@ Depending on your OS.
 ### **3️⃣ Install Dependencieses**
 ```sh
 pip install -r requirements.txt
-
+```
 
 
 ### **4️⃣ Set Up Kaggle API Accecess**
@@ -63,6 +64,7 @@ KAGGLE_KEY_YOURNAME -> "your-kaggle-api-key"
 To train the model, run:
 ```sh
 python train.py
+```
 
 ✔ Downloads dataset from Kaggle.
 ✔ Trains model in two phases.
@@ -75,11 +77,14 @@ python train.py
 ### **1️⃣ Predict a Single Imagege**
 ```sh
 python predict.py --image path/to/image.jpg
+```
 
 ### **2️⃣ Predict a Single Imagege**
 ```sh
 python predict.py --folder path/to/folder.jpg
+```
 
 ## **📊 Visualizing Training Performance**
 ```sh
 python utils.py
+```
