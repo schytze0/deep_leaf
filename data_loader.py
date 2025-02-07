@@ -2,14 +2,29 @@ import os
 import kagglehub
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from config import TRAIN_PATH, VALID_PATH, IMG_SIZE, BATCH_SIZE, KAGGLE_USERNAME, KAGGLE_KEY, ROOT_FOLDER
+from config import TRAIN_PATH, VALID_PATH, IMG_SIZE, BATCH_SIZE, ROOT_FOLDER
 
 def setup_kaggle_auth():
     """
-    Ensures Kaggle API authentication is set up dynamically using environment variables.
+    Sets up Kaggle API authentication dynamically based on the active GitHub user.
     """
-    os.environ["KAGGLE_USERNAME"] = KAGGLE_USERNAME
-    os.environ["KAGGLE_KEY"] = KAGGLE_KEY
+    # Detect GitHub user from environment variables
+    github_user = os.getenv("GITHUB_ACTOR", "default_user").upper()  # Get GitHub username
+
+    # Construct the environment variable names for Kaggle credentials
+    kaggle_username_env = f"KAGGLE_USERNAME_{github_user}"
+    kaggle_key_env = f"KAGGLE_KEY_{github_user}"
+
+    # Retrieve credentials from environment
+    kaggle_username = os.getenv(kaggle_username_env, "")
+    kaggle_key = os.getenv(kaggle_key_env, "")
+
+    if kaggle_username and kaggle_key:
+        os.environ["KAGGLE_USERNAME"] = kaggle_username
+        os.environ["KAGGLE_KEY"] = kaggle_key
+    else:
+        print(f"Kaggle API credentials not found for user {github_user}.")
+        print("Make sure you have added your credentials as GitHub Secrets.")
 
 def download_dataset():
     """
