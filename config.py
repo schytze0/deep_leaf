@@ -1,5 +1,9 @@
 import os
 import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Kaggle API Credentials (User-Specific)
 GITHUB_ACTOR = os.getenv("GITHUB_ACTOR", "default_user").upper()  # Detect GitHub username
@@ -14,7 +18,7 @@ DATA_DIR = os.path.join(ROOT_FOLDER, "new plant diseases dataset(augmented)/New 
 # Define paths for training, validation, and testing
 TRAIN_PATH = os.path.join(DATA_DIR, "train")
 VALID_PATH = os.path.join(DATA_DIR, "valid")
-TEST_PATH = os.path.join(ROOT_FOLDER, "test/test"
+TEST_PATH = os.path.join(ROOT_FOLDER, "test/test")
 
 # Model save path
 MODEL_DIR = "models"  # Directory to store trained models

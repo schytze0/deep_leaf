@@ -1,3 +1,4 @@
+python-dotenv
 tensorflow>=2.8
 numpy
 pandas
