@@ -33,8 +33,10 @@ cd deep_leaf
 
 
 ### **2️⃣Fo Create a virtual environment**
-Depending on your OS.
-
+Depending on your OS (for example with conda).
+```sh
+conda create -n my_env python=3.10  
+```
 
 ### **3️⃣ Install Dependencieses**
 ```sh
@@ -53,9 +55,11 @@ Click "Create New API Token", which downloads kaggle.json.
 Step 2: Add Credentials as GitHub Secrets
 
 Go to GitHub Repo → Settings → Secrets → Actions → New Repository Secret
+
 For each team member, add:
 
 Secret Name		Value
+
 KAGGLE_USERNAME_YOURNAME -> "your-kaggle-username"
 KAGGLE_KEY_YOURNAME -> "your-kaggle-api-key"
 

@@ -12,7 +12,7 @@ else:
 # Kaggle API Credentials (User-Specific)
 GITHUB_ACTOR = os.getenv("GITHUB_ACTOR", "default_user").upper()  # Detect GitHub username
 
-KAGGLE_USERNAME = os.getenv(f"KAGGLE_USERNAME_{GITHUB_ACTOR}") or os.getenv("KAGGLE_USERNAME", "")
+KAGGLE_USERNAME = os.getenv(f"KAGGLE_USERNAME_{GITHUB_ACTOR}")
 KAGGLE_KEY = os.getenv(f"KAGGLE_KEY_{GITHUB_ACTOR}") or os.getenv("KAGGLE_KEY", "")
 
 # Define a dataset storage directory inside the user's home
