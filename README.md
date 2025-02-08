@@ -58,11 +58,39 @@ Go to GitHub Repo → Settings → Secrets → Actions → New Repository Secret
 
 For each team member, add:
 
-Secret Name		Value
+Secret Name	|	Value
 
 KAGGLE_USERNAME_YOURNAME -> "your-kaggle-username"
+
 KAGGLE_KEY_YOURNAME -> "your-kaggle-api-key"
 
+
+## **🔑 Setting Up the .env File for Automated Environment Setup**
+
+To avoid manually setting environment variables every time, store them in a .env file.
+
+### **1️⃣ Create the .env v File**
+Inside the project folder, create a .env file:
+```sh
+vim .env
+```
+
+### **2️⃣ Add the Following Variables to .envnv**
+```ini
+# User Configuration
+GITHUB_ACTOR=your_github_username
+
+# Kaggle API Credentials
+KAGGLE_USERNAME_YOURNAME=your_kaggle_username
+KAGGLE_KEY_YOURNAME=your_kaggle_api_key
+```
+
+## **✅Run the test_config.py file to check the setup**
+```sh
+python test_config.py
+```
+
+There might appear some Tensorflow related warnings (depending on your machine and GPU/CUDA support). The script  should print "Configuration check complete." at the end of the output.
 
 ## **🔄 Training the Model**
 
