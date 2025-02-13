@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import optimizers, callbacks
+import json
 from data_loader import load_data
 from model import build_vgg16_model
 from config import MODEL_PATH, HISTORY_PATH, EPOCHS

@@ -3,7 +3,7 @@ import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', ".env")
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path, override=True)
 else:
@@ -26,7 +26,7 @@ VALID_PATH = os.path.join(DATA_DIR, "valid")
 TEST_PATH = os.path.join(ROOT_FOLDER, "test/test")
 
 # Model save path
-MODEL_DIR = "models"  # Directory to store trained models
+MODEL_DIR = "../models"  # Directory to store trained models
 MODEL_PATH = os.path.join(MODEL_DIR, "plant_disease_model.keras")  # Path for saving/loading the model
 
 # Training parameters
@@ -39,7 +39,7 @@ if not os.path.exists(MODEL_DIR):
     os.makedirs(MODEL_DIR)
 
 # Logging & History paths
-LOGS_DIR = "logs"
+LOGS_DIR = "../logs"
 os.makedirs(LOGS_DIR, exist_ok=True)  # Ensure logs directory exists
 
 # Generate timestamp for unique history files
