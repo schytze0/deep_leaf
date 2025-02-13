@@ -44,7 +44,7 @@ pip install -r requirements.txt
 ```
 
 
-### **4️⃣ Set Up Kaggle API Accecess**
+### **4️⃣ Set Up Kaggle API Access**
 Each team member must store their own Kaggle credentials as GitHub repository secrets.
 
 Step 1: Get Your Kaggle API Key
