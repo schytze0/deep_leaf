@@ -5,7 +5,6 @@
 - **Automated dataset handling from Kaggle**
 - **Efficient model training & logging**
 
----
 
 ## 📂 Repository Structure
 | File/Folder            | Description |
