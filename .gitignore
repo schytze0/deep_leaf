@@ -1,2 +1,9 @@
 .env
 __pycache__/
+data/
+
+# from Phil
+README_files/
+my_readme.md
+tf-gpu/ 
+README.html
