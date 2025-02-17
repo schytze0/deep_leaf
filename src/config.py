@@ -25,7 +25,9 @@ DATA_DIR = os.path.join(ROOT_DIR, "data/")
 # Define paths for training, validation, and testing
 TRAIN_PATH = os.path.join(DATA_DIR, "raw/versions/2/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/train/")
 VALID_PATH = os.path.join(DATA_DIR, "raw/versions/2/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/valid/")
-TEST_PATH = os.path.join(ROOT_DIR, "raw/versions/2/test/")
+TEST_PATH = os.path.join(ROOT_DIR, "raw/versions/2/test/test/")
+# added processed path
+PROC_DIR = os.path.join(DATA_DIR, "processed/")
 
 # Model save path
 MODEL_DIR = "./models"  # Directory to store trained models
@@ -47,3 +49,4 @@ os.makedirs(LOGS_DIR, exist_ok=True)  # Ensure logs directory exists
 # Generate timestamp for unique history files
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 HISTORY_PATH = os.path.join(LOGS_DIR, f"history_{TIMESTAMP}.json")
+NUM_CLASSES = 38
