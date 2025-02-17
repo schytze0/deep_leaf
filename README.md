@@ -30,7 +30,6 @@ git clone https://github.com/schytze0/deep_leaf.git
 cd deep_leaf
 ```
 
-
 ### **2️⃣Fo Create a virtual environment**
 Depending on your OS (for example with conda).
 ```sh
