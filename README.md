@@ -19,6 +19,7 @@
 | `logs/` _(Folder)_    | Stores **training history (`history_*.json`)**. |
 | `models/` _(Folder)_  | Stores **trained models (`.keras`)**. (handled with DVC) |
 | `data/` _(Folder)_  | Stores **data**. (handled with DVC) |
+| `.dvc/` _(Folder)_  | DVC configuration folder |
 
 ## 🚀 **Setting Up Deep Leaf for New Developers**
 Follow these steps to get started:
@@ -101,15 +102,16 @@ python train.py
 ✔ Saves best model to models/.
 ✔ Logs training history in logs/history_*.json.
 
+Instead of the solution above, you can use the train-model that is saved under `models/`. 
 
 ## **🔍 Making Predictions**
 
-### **1️⃣ Predict a Single Imagege**
+### **1️⃣ Predict a Single Image**
 ```sh
 python predict.py --image path/to/image.jpg
 ```
 
-### **2️⃣ Predict a Single Imagege**
+### **2️⃣ Predict a Single Image**
 ```sh
 python predict.py --folder path/to/folder.jpg
 ```
