@@ -5,21 +5,20 @@
 - **Automated dataset handling from Kaggle**
 - **Efficient model training & logging**
 
-
 ## 📂 Repository Structure
 | File/Folder            | Description |
 |------------------------|-------------|
-| `config.py`           | Stores **global configuration** (paths, credentials, model settings). |
-| `data_loader.py`      | Handles **dataset downloading & preprocessing**. |
-| `model.py`            | Defines the **VGG16 transfer learning model**. |
-| `train.py`            | **Trains the model** in two phases and saves training history. |
-| `predict.py`          | **Makes predictions** on single images or folders. |
-| `utils.py`            | Loads & **plots training history** (accuracy & loss). |
+| `src/config.py`           | Stores **global configuration** (paths, credentials, model settings). |
+| `src/data_loader.py`      | Handles **dataset downloading & preprocessing**. |
+| `src/model.py`            | Defines the **VGG16 transfer learning model**. |
+| `src/train.py`            | **Trains the model** in two phases and saves training history. |
+| `src/predict.py`          | **Makes predictions** on single images or folders. |
+| `src/utils.py`            | Loads & **plots training history** (accuracy & loss). |
 | `requirements.txt`    | Lists **dependencies** for setting up the environment. |
+| `mac-requirements.txt`    | Lists **dependencies** for setting up the environment with Mac (Silicon, GPU use). |
 | `logs/` _(Folder)_    | Stores **training history (`history_*.json`)**. |
-| `models/` _(Folder)_  | Stores **trained models (`.keras`)**. |
-
----
+| `models/` _(Folder)_  | Stores **trained models (`.keras`)**. (handled with DVC) |
+| `data/` _(Folder)_  | Stores **data**. (handled with DVC) |
 
 ## 🚀 **Setting Up Deep Leaf for New Developers**
 Follow these steps to get started:
