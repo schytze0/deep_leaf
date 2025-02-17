@@ -2,7 +2,8 @@ import os
 import kagglehub
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from config import TRAIN_PATH, VALID_PATH, IMG_SIZE, BATCH_SIZE, ROOT_FOLDER, KAGGLE_USERNAME, KAGGLE_KEY
+from config import TRAIN_PATH, VALID_PATH, IMG_SIZE, BATCH_SIZE, KAGGLE_USERNAME, KAGGLE_KEY
+import shutil
 
 def setup_kaggle_auth():
     """
@@ -22,12 +23,17 @@ def download_dataset():
     """
     setup_kaggle_auth()  # Ensure Kaggle API authentication is set
 
-    dataset_path = os.path.expanduser("~/.cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset")
+    # updated to save data in the project
+    dataset_path = os.path.expanduser("./data/raw")
+    download_temp_path = os.path.expanduser("~/.cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset")
 
     if not os.path.exists(dataset_path) or not os.listdir(dataset_path):
         print("Downloading dataset from KaggleHub...")
         downloaded_path = kagglehub.dataset_download("vipoooool/new-plant-diseases-dataset")
+
         print(f"Dataset successfully downloaded to: {downloaded_path}")
+        shutil.move(download_temp_path, dataset_path)
+        print(f"Raw data successfully transfered to the project at: { dataset_path}")
     else:
         print("Dataset already exists at {dataset_path}. Skipping download.")
 
@@ -55,7 +61,7 @@ def load_data():
         class_mode="categorical",
         shuffle=False
     )
-
+    
     return train_data, val_data
 
 if __name__ == "__main__":
