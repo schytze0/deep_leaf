@@ -9,3 +9,4 @@ tf-gpu/
 README.html
 .DS_Store
 /data
+/models
