@@ -3,7 +3,8 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing import image
 from data_loader import load_data
-from config import MODEL_PATH, IMG_SIZE, TEST_PATH
+from config import MODEL_PATH, IMG_SIZE, TEST_PATH, PROC_DIR
+from helpers import load_tfrecord_data
 
 def load_trained_model():
     """
@@ -21,7 +22,15 @@ def get_class_labels():
     Returns:
     - class_labels (dict): Mapping from index to class label.
     """
-    train_data, _ = load_data()  # Load training data to access class indices
+    # train_data, _ = load_data()  # Load training data to access class indices
+    # new data load from .tfrecord
+    train_data = load_tfrecord_data(
+        os.path.join(
+            PROC_DIR,
+            "train_data.tfrecord"
+        )
+    )
+
     class_indices = train_data.class_indices  # Dictionary mapping labels to indices
     class_labels = {v: k for k, v in class_indices.items()}  # Reverse mapping
     return class_labels
