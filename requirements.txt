@@ -7,4 +7,3 @@ Pillow
 kagglehub
 json5
 tqdm
-shutil

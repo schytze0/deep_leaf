@@ -9,4 +9,3 @@ json5
 tensorflow-metal
 tensorflow-macos
 tqdm
-shutil
