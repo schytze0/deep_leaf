@@ -9,3 +9,4 @@ json5
 tensorflow-metal
 tensorflow-macos
 tqdm
+mlflow
