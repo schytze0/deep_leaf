@@ -92,7 +92,7 @@ def predict_folder(folder_path):
     results = {}
 
     # Get all image files
-    image_files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith((".jpg", ".png"))]
+    image_files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.lower().endswith((".jpg", ".png"))]
 
     for img_path in image_files:
         img_array = preprocess_image(img_path)
