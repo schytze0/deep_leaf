@@ -16,7 +16,12 @@ def build_vgg16_model(input_shape, num_classes, trainable_base=False, fine_tune_
     - model: A compiled Keras model.
     - base_model: The VGG16 base model.
     """
-    base_model = VGG16(weights='imagenet', include_top=False, input_shape=input_shape)
+    base_model = VGG16(
+        weights='imagenet',
+        include_top=False, 
+        input_shape=input_shape
+    )
+    
     base_model.trainable = trainable_base  # Freeze or unfreeze base layers
 
     if trainable_base and fine_tune_layers > 0:

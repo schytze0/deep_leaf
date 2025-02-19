@@ -2,8 +2,9 @@ import os
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing import image
-from data_loader import load_data
-from config import MODEL_PATH, IMG_SIZE, TEST_PATH
+# from data_loader import load_data
+from config import MODEL_PATH, IMG_SIZE, TEST_PATH, PROC_DIR
+from helpers import load_tfrecord_data
 
 def load_trained_model():
     """
@@ -21,9 +22,25 @@ def get_class_labels():
     Returns:
     - class_labels (dict): Mapping from index to class label.
     """
-    train_data, _ = load_data()  # Load training data to access class indices
-    class_indices = train_data.class_indices  # Dictionary mapping labels to indices
-    class_labels = {v: k for k, v in class_indices.items()}  # Reverse mapping
+    # train_data, _ = load_data()  # Load training data to access class indices
+    # new data load from .tfrecord
+    train_data = load_tfrecord_data(
+        os.path.join(
+            PROC_DIR,
+            "train_data.tfrecord"
+        )
+    )
+
+    # prior approach with raw data
+    # class_indices = train_data.class_indices  # Dictionary mapping labels to indices
+    # class_labels = {v: k for k, v in class_indices.items()}  # Reverse mapping
+
+    # new approach with dvc-tracking of data
+    class_labels = []
+    # decoding one-hot back to class indices
+    for _, label in train_data:
+        class_labels.append(tf.argmax(label, axis=-1).numpy()[0]) 
+
     return class_labels
 
 def preprocess_image(img_path):
@@ -75,7 +92,7 @@ def predict_folder(folder_path):
     results = {}
 
     # Get all image files
-    image_files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith((".jpg", ".png"))]
+    image_files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.lower().endswith((".jpg", ".png"))]
 
     for img_path in image_files:
         img_array = preprocess_image(img_path)
