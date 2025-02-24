@@ -1,6 +1,7 @@
 import tensorflow as tf
 from config import NUM_CLASSES, BATCH_SIZE
 
+# INFO: Just another file to store functions that might be used in more than a single script
 # including saved train_/val_data.tfrecord
 def _parse_function(proto):
     # Define the feature structure

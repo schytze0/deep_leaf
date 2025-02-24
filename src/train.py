@@ -37,6 +37,7 @@ def train_model():
     2. Fine-tune the top layers of the base model with a smaller learning rate.
     3. Integrates MLflow to track scores (helpful if different training data is used; NOT TESTED YET)
     """
+    # INFO: data is not loaded again, since it will now load the `.tfrecord` files
     # train_data, val_data = load_data()
     
     # load mlflow
@@ -76,6 +77,7 @@ def train_model():
     )
 
     # logging in mlflow
+    # INFO: Starting MLflow
     mlflow_logger = MLFlowLogger()
 
     # manually setting steps per epoch

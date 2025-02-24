@@ -28,7 +28,11 @@ def download_dataset():
     setup_kaggle_auth()  # Ensure Kaggle API authentication is set
 
     # updated to save data in the project
+    # INFO: Copied to a local place to place it into Dagshub (versioning of data)
+    # DEBUG: Probably local transfer not needed since we version the processed `.tfrecord`
+    # DISCUSS: Is it really necessary to store also the raw images via Dagshub or would it be okay to just store the `.tfrecord` files as raw data? Since we just changed the format might be helpful to just save the the format that could be versioned. What do you think?
     dataset_path = os.path.expanduser("./data/raw")
+    dataset_path = os.path.expanduser("~/.cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset")
     download_temp_path = os.path.expanduser("~/.cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset")
 
     if not os.path.exists(dataset_path) or not os.listdir(dataset_path):
@@ -42,6 +46,7 @@ def download_dataset():
         print("Dataset already exists at {dataset_path}. Skipping download.")
 
 # Additional functions to save train and validation data
+# INFO: The `.tfrecord` format saves the images in a serialized format (not just references for the data). This format can be tracked and versioned (as raw image files could not)
 def _bytes_feature(value):
     """Returns a bytes_list from a string / byte."""
     return tf.train.Feature(
@@ -170,6 +175,7 @@ def load_data():
     # saving the generated data
     os.makedirs(PROC_DIR, exist_ok=True)
 
+    # INFO: Creating `.tfrecord` for processed data to get better versioning
     save_as_tfrecord(train_data, os.path.join(PROC_DIR, "train_data.tfrecord"))
     save_as_tfrecord(val_data, os.path.join(PROC_DIR, "val_data.tfrecord"))
 
