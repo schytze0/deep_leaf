@@ -9,4 +9,4 @@ README.html
 .DS_Store
 data/
 models/
-dvc_remote/
+dvc_local/
