@@ -92,6 +92,14 @@ There might appear some Tensorflow related warnings (depending on your machine a
 
 ## **🔄 Training the Model**
 
+### Dagshub Credentials
+You need to add your dagshub credentials to `.env` before train run:
+
+```sh
+DAGSHUB_USERNAME=<your-username>
+DAGSHUB_KEY=<your-key>
+```
+
 To train the model, run:
 ```sh
 python train.py
@@ -120,3 +128,4 @@ python predict.py --folder path/to/folder.jpg
 ```sh
 python utils.py
 ```
+
