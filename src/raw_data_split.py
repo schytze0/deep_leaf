@@ -209,18 +209,10 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
     - tfrecord_paths: A dictionary with keys corresponding to subsets (e.g., 'train', 'validation', 'test') and values as the paths where the corresponding TFRecord files should be saved.
     - split_ratios: A tuple representing the proportion of the total dataset to be allocated to each subset. If None, the entire dataset will be used as a single subset. If provided, it can contain any number of values indicating the proportions for each subset.
 
-
     Return:
     - Saves the generated TFRecord files to the specified paths in `tfrecord_paths`. The images and their corresponding labels are stored in the TFRecords.
-
-    Notes:
-    - The images are first shuffled randomly to ensure the dataset is mixed before splitting.
-    - The function assumes the images are stored in subdirectories, where each subdirectory contains images.
-    - The split ratios determine how the images are divided into subsets (e.g., for training, validation, and testing).
-    - TFRecord files are generated for each subset and stored at the provided paths.
-    
     '''
-    
+
     if split_ratios is None:
         images = [os.path.join(source_dir, img) for img in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, img))]
         data = [(images), 'all_data']
@@ -249,44 +241,40 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
         subset_keys = list(tfrecord_paths.keys())
         num_total = sum(len(class_data[0]) for class_data in data)
     
-        # shuffling images and splitting them
+        # Collecting image paths and labels from all classes
         for label in class_labels:
             class_dir = os.path.join(source_dir, label)
             if os.path.isdir(class_dir): 
                 images = [os.path.join(class_dir, img) for img in os.listdir(class_dir)]
-                random.shuffle(images)
                 int_label = label_map[label]
                 data.append((images, int_label))
         
-        # Distributing images from each class to subsets
+        # Now shuffle the entire dataset (across classes)
+        all_images_labels = []
         for class_images, label in data:
-            class_data = [(img, label) for img in class_images]  # Create (image, label) pairs
-            random.shuffle(class_data)  # Shuffle the (image, label) pairs together
+            all_images_labels.extend([(img, label) for img in class_images])
 
-            shuffled_images, shuffled_labels = zip(*class_data)
+        random.shuffle(all_images_labels)  # Shuffle across all classes
 
-            num_images = len(shuffled_images)
-            start = 0
-            for i, subset_key in enumerate(subset_keys):
-                subset_size = int(num_images * split_ratios[i])
-                end = start + subset_size
-                subset_data[subset_key].extend((img, label) for img in shuffled_images[start:end])
-                start = end
+        # Split the shuffled data into subsets based on split_ratios
+        start = 0
+        for i, subset_key in enumerate(subset_keys):
+            subset_size = int(len(all_images_labels) * split_ratios[i])
+            subset_data[subset_key].extend(all_images_labels[start:start + subset_size])
+            start += subset_size
 
         # Case: remaining files due to rounding would be given to the last subset
-        if start < num_total:
-            remaining_images = shuffled_images[start:]
-            remaining_labels = shuffled_labels[start:]
-            subset_data[subset_keys[-1]].extend((img, label) for img, label in zip(remaining_images, remaining_labels))
-
+        if start < len(all_images_labels):
+            remaining_images_labels = all_images_labels[start:]
+            subset_data[subset_keys[-1]].extend(remaining_images_labels)
         
-    # New solution
+    # Saving the TFRecord files
     for subset_key in subset_keys:
         random.shuffle(subset_data[subset_key])
         subset_images = subset_data[subset_key]
         total_images = len(subset_images)
         
-        if len(subset_data[subset_key]) > 0:
+        if total_images > 0:
             generator = filtered_generator(subset_images)
             save_as_tfrecord(generator, tfrecord_paths[subset_key], total_images)
         else:
