@@ -28,6 +28,7 @@ class MLFlowLogger(callbacks.Callback):
 
 def setup_mlflow_experiment():
     # TODO: set up later after Yannick created dagshub
+    # DEBUG: Yannik, here you have to add the repository name
     mlflow.set_tracking_uri('https://dagshub.com/<username>/<repo_name>.mlflow')
     mlflow.set_experiment('Plant_Classification_Experiment')
     mlflow.start_run()
