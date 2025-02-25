@@ -38,7 +38,7 @@ def download_dataset():
         downloaded_path = kagglehub.dataset_download('vipoooool/new-plant-diseases-dataset')
         print(f'Dataset successfully downloaded to: {downloaded_path}')
     else:
-        print('Dataset already exists at {dataset_path}. Skipping download.')
+        print(f'Dataset already exists at {dataset_path}. Skipping download.')
 
 # Functions to create tfrecord file
 def _bytes_feature(value):
@@ -130,8 +130,8 @@ def save_as_tfrecord(generator, filename, total_images):
 
             for images, labels in generator:
                 # if empty go to next
-                # if len(images) == 0 or len(labels) == 0:
-                    # continue  
+                if len(images) == 0 or len(labels) == 0:
+                    continue  
 
                 # processing each image-label pair
                 for image, label in zip(images, labels):
@@ -205,6 +205,7 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
     Splits images into subsets and saves them as TFRecords.
 
     This function organizes the images from a source directory into subsets, shuffles them, and splits them according to given ratios. Then, it saves the resulting subsets as TFRecord files, which are an efficient format for storing and reading large datasets in TensorFlow.
+    For the test data it just creates a TFRecord file.
 
     Arguments:
     - source_dir: The root directory containing subdirectories of images, where each subdirectory represents a different class. Each class folder should contain images of that class.
@@ -222,22 +223,14 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
     - TFRecord files are generated for each subset and stored at the provided paths.
     
     '''
-
-    # making the random selection
-    data = []
-    class_labels = sorted(os.listdir(source_dir))  
     
-    for label in class_labels:
-        class_dir = os.path.join(source_dir, label)
-        if os.path.isdir(class_dir): 
-            images = [os.path.join(class_dir, img) for img in os.listdir(class_dir)]
-            data.extend((img, label) for img in images)
-
-    random.shuffle(data)
-
     if split_ratios is None:
-        subset_data = {'all_data': data}
+        images = [os.path.join(source_dir, img) for img in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, img))]
+        data = [(images), 'all_data']
+        
+        subset_data = {'all_data': [(img, 'all_data') for img in images]}  
         subset_keys = ['all_data']
+                
     else:
         # Checking minimum length if split_ratios is given
         if len(split_ratios) < 1:
@@ -250,26 +243,41 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
         # checking if length of split_ratios matches tfrecord_paths
         if len(split_ratios) != len(tfrecord_paths):
             raise ValueError('The length of split_ratios must match the length of tfrecord_paths.')
-
-        # computing split sizes dynamically based on the input
-        num_total = len(data)
-        subset_data = {}
-        subset_keys = list(tfrecord_paths.keys())
-
-        start_index = 0
         
-        # creating start/end for each split
-        for i, ratio in enumerate(split_ratios):
-            end_index = start_index + int(num_total * ratio)
-            subset_data[subset_keys[i]] = data[start_index:end_index]
-            start_index = end_index
+        data = []
+        class_labels = sorted(os.listdir(source_dir))
+
+        subset_data = {key: [] for key in tfrecord_paths.keys()}
+        subset_keys = list(tfrecord_paths.keys())
+        num_total = sum(len(class_data[0]) for class_data in data)
+    
+        # shuffling images and splitting them
+        for label in class_labels:
+            class_dir = os.path.join(source_dir, label)
+            if os.path.isdir(class_dir): 
+                images = [os.path.join(class_dir, img) for img in os.listdir(class_dir)]
+                random.shuffle(images)
+                data.append((images, label))
+        
+        # Distributing images from each class to subsets
+        for class_images, label in data:
+            num_images = len(class_images)
+            start = 0
+            for i, subset_key in enumerate(subset_keys):
+                subset_size = int(num_images * split_ratios[i])
+                end = start + subset_size
+                subset_data[subset_key].extend((img, label) for img in class_images[start:end])
+                start = end
 
         # Case: remaining files due to rounding would be given to the last subset
-        if start_index < num_total:
-            subset_data[subset_keys[-1]].extend(data[start_index:])
+        if start < num_total:
+            subset_data[subset_keys[-1]].extend((img, label) for class_images, label in data for img in class_images[start:])
+
         
     # New solution
     for subset_key in subset_keys:
+        print(f"Subset: {subset_key}, Number of images: {len(images)}")
+        print("Example file paths:", images[:5])  # Show some samples
         subset_images = subset_data[subset_key]
         total_images = len(subset_images)
         generator = filtered_generator(subset_images, source_dir)
@@ -329,20 +337,20 @@ if __name__ == '__main__':
     tfrecord_paths = {
         'train': {subset: os.path.join(output_dir, f'train_{subset}.tfrecord') for subset in subsets},
         'valid': {subset: os.path.join(output_dir, f'valid_{subset}.tfrecord') for subset in subsets},
-        'test': {os.path.join(output_dir, 'test.tfrecord')}
+        'test':  {'all_data': os.path.join(output_dir, 'test.tfrecord')}
     }
 
     split_ratios = (0.3, 0.3, 0.4)
     
-    # Training data: splitting, transforming (tfrecord) and saving
-    print('Beginning subsetting training data ...', end='\r')
-    create_tfrecords(TRAIN_PATH, tfrecord_paths['train'], split_ratios)
-    print(f'Training data is subsetted and saved to {output_dir} ✅')
+    # # Training data: splitting, transforming (tfrecord) and saving
+    # print('Beginning subsetting training data ...', end='\r')
+    # create_tfrecords(TRAIN_PATH, tfrecord_paths['train'], split_ratios)
+    # print(f'Training data is subsetted and saved to {output_dir} ✅')
 
-    # Validation data: splitting, transforming (tfrecord) and saving
-    print('Beginning subsetting validation data ...', end='\r')
-    create_tfrecords(VALID_PATH, tfrecord_paths['valid'], split_ratios)
-    print(f'Validation data is subsetted and saved to {output_dir} ✅')
+    # # Validation data: splitting, transforming (tfrecord) and saving
+    # print('Beginning subsetting validation data ...', end='\r')
+    # create_tfrecords(VALID_PATH, tfrecord_paths['valid'], split_ratios)
+    # print(f'Validation data is subsetted and saved to {output_dir} ✅')
 
     # Test data: transforming (tfrecord) and saving
     print('Beginning creating test data ...', end='\r')
