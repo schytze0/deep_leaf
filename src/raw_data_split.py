@@ -147,7 +147,7 @@ def save_as_tfrecord(generator, filename, total_images):
                     break
 
 # Functio to create proper subset for DataGeneraotr
-def filtered_generator(subset_data, source_dir, batch_size=BATCH_SIZE):
+def filtered_generator(subset_data, batch_size=BATCH_SIZE):
     '''
     Custom generator for selected image paths.
 
@@ -270,7 +270,7 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
             for i, subset_key in enumerate(subset_keys):
                 subset_size = int(num_images * split_ratios[i])
                 end = start + subset_size
-                subset_data[subset_key].extend((img, label) for img in class_images[start:end])
+                subset_data[subset_key].extend((img, label) for img in shuffled_images[start:end])
                 start = end
 
         # Case: remaining files due to rounding would be given to the last subset
@@ -282,11 +282,12 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
         
     # New solution
     for subset_key in subset_keys:
+        random.shuffle(subset_data[subset_key])
         subset_images = subset_data[subset_key]
         total_images = len(subset_images)
         
         if len(subset_data[subset_key]) > 0:
-            generator = filtered_generator(subset_images, source_dir)
+            generator = filtered_generator(subset_images)
             save_as_tfrecord(generator, tfrecord_paths[subset_key], total_images)
         else:
             print(f'Warning: Subset {subset_key} is empty, skipping!')
