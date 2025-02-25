@@ -33,4 +33,6 @@ def load_tfrecord_data(tfrecord_file):
     dataset = dataset.batch(BATCH_SIZE)
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-    return dataset
+    total_records = sum(1 for _ in dataset.unbatch())
+
+    return dataset, total_records
