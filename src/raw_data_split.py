@@ -2,12 +2,10 @@
 # DEBUG: It works but is not beautiful, however, it is a preliminary step. If we have more time, we probably could spend it on this one. 
 
 import os
-import shutil
 import random
-from config import IMG_SIZE, BATCH_SIZE, KAGGLE_USERNAME, KAGGLE_KEY, TRAIN_PATH, VALID_PATH, TEST_PATH
+from config import IMG_SIZE, BATCH_SIZE, KAGGLE_USERNAME, KAGGLE_KEY, TRAIN_PATH, VALID_PATH
 import kagglehub
 import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 from tqdm import tqdm
 
@@ -171,33 +169,32 @@ def filtered_generator(subset_data, source_dir, batch_size=BATCH_SIZE):
 
     '''
 
-    # Load images using flow_from_directory
-    datagen = ImageDataGenerator(rescale=1.0/255)
-
     images = []
     labels = []
 
-    for img_path, label in subset_data:
+    for img_path in subset_data:
+        # image path is tuple of path and label (group)
+        img_path, label = img_path
         img = tf.keras.preprocessing.image.load_img(img_path, target_size=IMG_SIZE)
-        img = tf.keras.preprocessing.image.img_to_array(img) / 255.0  # Convert to numpy array
+        img = tf.keras.preprocessing.image.img_to_array(img) / 255.0 
         images.append(img)
         labels.append(label)
-    
+
+    labels = np.array(labels, dtype=np.int32)
+        
     images = np.array(images)
-    labels = np.array(labels)
-    
+
     # Shuffle the data
     indices = np.arange(len(images))
     np.random.shuffle(indices)
     images = images[indices]
-    labels = labels[indices]
+    labels = labels[indices] 
 
     while True:
         for i in range(0, len(images), batch_size):
             batch_images = images[i:i + batch_size]
-            batch_labels = labels[i:i + batch_size]
+            batch_labels = labels[i:i + batch_size] 
             yield batch_images, batch_labels
-
 
 # Function to create TFRecord files for subsets
 def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
@@ -246,6 +243,7 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
         
         data = []
         class_labels = sorted(os.listdir(source_dir))
+        label_map = {label: idx for idx, label in enumerate(class_labels)}
 
         subset_data = {key: [] for key in tfrecord_paths.keys()}
         subset_keys = list(tfrecord_paths.keys())
@@ -257,11 +255,17 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
             if os.path.isdir(class_dir): 
                 images = [os.path.join(class_dir, img) for img in os.listdir(class_dir)]
                 random.shuffle(images)
-                data.append((images, label))
+                int_label = label_map[label]
+                data.append((images, int_label))
         
         # Distributing images from each class to subsets
         for class_images, label in data:
-            num_images = len(class_images)
+            class_data = [(img, label) for img in class_images]  # Create (image, label) pairs
+            random.shuffle(class_data)  # Shuffle the (image, label) pairs together
+
+            shuffled_images, shuffled_labels = zip(*class_data)
+
+            num_images = len(shuffled_images)
             start = 0
             for i, subset_key in enumerate(subset_keys):
                 subset_size = int(num_images * split_ratios[i])
@@ -271,19 +275,21 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
 
         # Case: remaining files due to rounding would be given to the last subset
         if start < num_total:
-            subset_data[subset_keys[-1]].extend((img, label) for class_images, label in data for img in class_images[start:])
+            remaining_images = shuffled_images[start:]
+            remaining_labels = shuffled_labels[start:]
+            subset_data[subset_keys[-1]].extend((img, label) for img, label in zip(remaining_images, remaining_labels))
 
         
     # New solution
     for subset_key in subset_keys:
-        print(f"Subset: {subset_key}, Number of images: {len(images)}")
-        print("Example file paths:", images[:5])  # Show some samples
         subset_images = subset_data[subset_key]
         total_images = len(subset_images)
-        # DEBUG: test 1
-        print(f'Total images: {total_images}')
-        generator = filtered_generator(subset_images, source_dir)
-        save_as_tfrecord(generator, tfrecord_paths[subset_key], total_images)
+        
+        if len(subset_data[subset_key]) > 0:
+            generator = filtered_generator(subset_images, source_dir)
+            save_as_tfrecord(generator, tfrecord_paths[subset_key], total_images)
+        else:
+            print(f'Warning: Subset {subset_key} is empty, skipping!')
 
 # DEBUG: I think this approach is not soo good; might be better to have the variables in a pipeline-saving object later on (i.e., in Github Actions)
 # TODO: Not yet implemented, I've manually coded the classes in config
@@ -344,18 +350,12 @@ if __name__ == '__main__':
 
     split_ratios = (0.3, 0.3, 0.4)
     
-    # # Training data: splitting, transforming (tfrecord) and saving
+    # Training data: splitting, transforming (tfrecord) and saving
     print('Beginning subsetting training data ...', end='\r')
     create_tfrecords(TRAIN_PATH, tfrecord_paths['train'], split_ratios)
     print(f'Training data is subsetted and saved to {output_dir} ✅')
 
-    # # Validation data: splitting, transforming (tfrecord) and saving
+    # Validation data: splitting, transforming (tfrecord) and saving
     print('Beginning subsetting validation data ...', end='\r')
     create_tfrecords(VALID_PATH, tfrecord_paths['valid'], split_ratios)
     print(f'Validation data is subsetted and saved to {output_dir} ✅')
-
-    # Test data: transforming (tfrecord) and saving
-    print('Beginning creating test data ...', end='\r')
-    create_tfrecords(TEST_PATH, tfrecord_paths['test'])
-    print(f'Test data is transformed and saved to {output_dir} ✅')
-
