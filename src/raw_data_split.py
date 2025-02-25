@@ -280,6 +280,8 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
         print("Example file paths:", images[:5])  # Show some samples
         subset_images = subset_data[subset_key]
         total_images = len(subset_images)
+        # DEBUG: test 1
+        print(f'Total images: {total_images}')
         generator = filtered_generator(subset_images, source_dir)
         save_as_tfrecord(generator, tfrecord_paths[subset_key], total_images)
 
@@ -343,14 +345,14 @@ if __name__ == '__main__':
     split_ratios = (0.3, 0.3, 0.4)
     
     # # Training data: splitting, transforming (tfrecord) and saving
-    # print('Beginning subsetting training data ...', end='\r')
-    # create_tfrecords(TRAIN_PATH, tfrecord_paths['train'], split_ratios)
-    # print(f'Training data is subsetted and saved to {output_dir} ✅')
+    print('Beginning subsetting training data ...', end='\r')
+    create_tfrecords(TRAIN_PATH, tfrecord_paths['train'], split_ratios)
+    print(f'Training data is subsetted and saved to {output_dir} ✅')
 
     # # Validation data: splitting, transforming (tfrecord) and saving
-    # print('Beginning subsetting validation data ...', end='\r')
-    # create_tfrecords(VALID_PATH, tfrecord_paths['valid'], split_ratios)
-    # print(f'Validation data is subsetted and saved to {output_dir} ✅')
+    print('Beginning subsetting validation data ...', end='\r')
+    create_tfrecords(VALID_PATH, tfrecord_paths['valid'], split_ratios)
+    print(f'Validation data is subsetted and saved to {output_dir} ✅')
 
     # Test data: transforming (tfrecord) and saving
     print('Beginning creating test data ...', end='\r')
