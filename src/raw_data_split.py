@@ -70,7 +70,7 @@ def _int64_feature(value):
     Return:
     - A `tf.train.Feature` object containing the input value as an `Int64List`.
     '''
-    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=[int(value)]))
 
 def create_example(image, label):
     '''
@@ -87,8 +87,7 @@ def create_example(image, label):
       and the label (as an int64) for storage in a `TFRecord`.
     '''
 
-    # Convert one-hot encoded label to a scalar index
-    label_index = np.argmax(label)  # Extract the index of the '1' in the one-hot encoded vector
+    label_index = int(label)
     
     feature = {
         'image': _bytes_feature(image),
