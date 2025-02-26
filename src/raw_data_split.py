@@ -238,7 +238,6 @@ def create_tfrecords(source_dir, tfrecord_paths, split_ratios=None):
 
         subset_data = {key: [] for key in tfrecord_paths.keys()}
         subset_keys = list(tfrecord_paths.keys())
-        num_total = sum(len(class_data[0]) for class_data in data)
     
         # Collecting image paths and labels from all classes
         for label in class_labels:
