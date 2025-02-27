@@ -3,7 +3,7 @@ import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', ".env")
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path, override=True)
 else:
@@ -17,16 +17,15 @@ KAGGLE_KEY = os.getenv(f"KAGGLE_KEY_{GITHUB_ACTOR}") or os.getenv("KAGGLE_KEY", 
 
 # Define a dataset storage directory inside the user's home
 HOME_DIR = os.path.expanduser("~")  
-ROOT_FOLDER = os.path.join(HOME_DIR, ".cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset/versions/2")
-DATA_DIR = os.path.join(ROOT_FOLDER, "new plant diseases dataset(augmented)/New Plant Diseases Dataset(Augmented)/")
+ROOT_DIR = os.path.abspath("./")
 
 # Define paths for training, validation, and testing
-TRAIN_PATH = os.path.join(DATA_DIR, "train")
-VALID_PATH = os.path.join(DATA_DIR, "valid")
-TEST_PATH = os.path.join(ROOT_FOLDER, "test/test")
+TRAIN_PATH = os.path.join(HOME_DIR, ".cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset/versions/2/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/train/")
+VALID_PATH = os.path.join(HOME_DIR, ".cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset/versions/2/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/valid/")
+TEST_PATH = os.path.join(HOME_DIR, ".cache/kagglehub/datasets/vipoooool/new-plant-diseases-dataset/versions/2/test/test")
 
 # Model save path
-MODEL_DIR = "models"  # Directory to store trained models
+MODEL_DIR = "./models"  # Directory to store trained models
 MODEL_PATH = os.path.join(MODEL_DIR, "plant_disease_model.keras")  # Path for saving/loading the model
 
 # Training parameters
@@ -39,9 +38,10 @@ if not os.path.exists(MODEL_DIR):
     os.makedirs(MODEL_DIR)
 
 # Logging & History paths
-LOGS_DIR = "logs"
+LOGS_DIR = "./logs"
 os.makedirs(LOGS_DIR, exist_ok=True)  # Ensure logs directory exists
 
 # Generate timestamp for unique history files
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 HISTORY_PATH = os.path.join(LOGS_DIR, f"history_{TIMESTAMP}.json")
+NUM_CLASSES = 38

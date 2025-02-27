@@ -1,2 +1,13 @@
 .env
 __pycache__/
+
+# from Phil
+README_files/
+my_readme.md
+tf-gpu/ 
+README.html
+.DS_Store
+data/
+models/
+dvc_local/
+/data
