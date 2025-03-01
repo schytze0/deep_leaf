@@ -82,26 +82,75 @@ def setup_mlflow_experiment():
     mlflow.log_metric('train_accuracy', 0, step=0)
     mlflow.log_metric('val_loss', 0, step=0)
 
-# TODO: Created function to get best epoch (accuracy):
-# DEBUG: Erwin, might already work, this was my first approach. Saving the new model is above after each epoch
-def get_best_epoch_and_accuracy():
-    # Fetching the best run from MLflow
-    best_run = mlflow.search_runs(order_by=["val_accuracy desc"]).head(1)
-    if best_run is not None and not best_run.empty:
-        best_epoch = best_run.iloc[0]['best_epoch']
-        best_val_accuracy = best_run.iloc[0]['best_val_accuracy']
+# TODO: Function to load a best model based on 'val_accuracy' from MLFlow's artifact storage to a local directory:
+# STATUS: not tested
+# DEBUG: Erwin - this is a first attempt; to be discussed further;
+# DEBUG: removed 'best_epoch'; we can choose the best model based on 'val_accuracy' and 'run_id' 
+def get_best_model():
+    """
+    Retrieves the best-of-the-best" model from MLFlow based on validation accuracy.
+    Each stored model has been stored in MLFlow based on best 'val_accuracy' epoch in train_model().
+    
+    Returns:
+        model_path (str): Path to the best model within MLFlow
+        run_id (str): ID of the best run
+        best_val_accuracy (float): Validation accuracy of the best model in MLFlow experiments
+    """
+    # Set the MLFlow tracking URI --> not set globally
+    mlflow.set_tracking_uri('https://dagshub.com/philkleer/deepleap_mlops.mlflow')
+    mlflow.set_experiment('Plant_Classification_Experiment')
+    
+    # Search for the best run based on 'validation accuracy'
+    best_run = mlflow.search_runs(order_by = ["val_accuracy desc"]).head(1)
+    
+    # Provide comments for clarity
+    if best_run.empty:
+        print("No runs found in the experiment")
+        return None, None, None
+    
+    # Extract information about the best run
+    run_id = best_run.iloc[0]['run_id']
+    best_val_accuracy = best_run.iloc[0]['best_val_accuracy']
+    # best_epoch = best_run.iloc[0]['best_epoch']  # TODO: do we need this information elsewhere?
+    
+    # Adding some comments again for clarity
+    print(f"Best run ID: {run_id}")
+    print(f"Best validation accuracy: {best_val_accuracy:.4f}")
 
-        # log the values
-        mlflow.log_metric('best_val_accuracy', best_val_accuracy)
-        mlflow.log_param('best_epoch', best_epoch)
+    # Define the model uri using the 'run_id'
+    model_uri = f"runs:/{run_id}/model"
+    
+    # Download the model to a local path
+    local_model_path = mlflow.artifacts.download_artifacts(artifact_uri = model_uri)
+    
+    # TODO: if instead we need to use the model immediately for inference, further training, etc.
+    # we can instead use the following:
+    # best_model = mlflow.keras.load_model(model_uri)
+    # print("Best model is loaded")
+    # return best_model, best_val_accuracy, run_id
 
-        # log run id
-        run_id = best_run.iloc[0]['run_id']
-        mlflow.log_param('best_run_id', run_id)
+    # Indicate clarity on the model path
+    print(f"Model downloaded to: {local_model_path}")
+    
+    return local_model_path, best_val_accuracy, run_id
 
-        return best_epoch, best_val_accuracy, run_id
-    else:
-        return None, None
+################################ production ###########################################
+# TODO: Erwin - for production we can use this code to load the best model retreived by get_best_model()
+#
+# # Get the best model
+# model_path, run_id, accuracy = get_best_model() 
+# if model_path:
+#    # Load the model
+#    best_model = mlflow.keras.load_model(model_path)
+#    
+#    # Copy the model to the production repository or deployment location
+#    production_path = "/path/to/production/model"  # path to be defined
+#   # Use appropriate methods for model transfer: shutil.copy, git operations, etc.
+#    
+#    print(f"Best model (accuracy: {accuracy:.4f}) deployed to production")
+# else:
+#     print("Failed to retrieve the best model")
+#########################################################################################
 
 # Old function adjusted
 def train_model():
