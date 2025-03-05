@@ -1,4 +1,6 @@
 [core]
-    remote = remote_storage
+    remote = origin
 ['remote "remote_storage"']
     url = ../../dvc_local
+['remote "origin"']
+    url = https://dagshub.com/schytze0/deep_leaf.dvc
