@@ -47,24 +47,24 @@ class MLFlowLogger(callbacks.Callback):
             # checking if it is the best epoch based on validation
             val_accuracy = logs.get('val_accuracy')
             if val_accuracy > self.best_val_accuracy:
-               self.best_val_accuracy = val_accuracy
-               self.best_epoch = epoch
-               self.best_run_id = mlflow.active_run().info.run_id
+                self.best_val_accuracy = val_accuracy
+                self.best_epoch = epoch
+                self.best_run_id = mlflow.active_run().info.run_id
 
-#     def on_train_end(self, logs=None):
-#         if self.best_run_id is None:
-#             previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
+    def on_train_end(self, logs=None):
+        if self.best_run_id is None:
+            previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
 
-#             previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
-#             if previous_best_run is not None and not previous_best_run.empty:
-#                 previous_best_val_accuracy = previous_best_run.iloc[0]['val_accuracy']
-#                 if self.best_val_accuracy > previous_best_val_accuracy:
-#                     mlflow.log_param('best_epoch', self.best_epoch)
-#                     mlflow.log_metric('best_val_accuracy', self.best_val_accuracy)
-#                     self.best_run_id = mlflow.active_run().info.run_id
-#                     mlflow.log_param('best_run_id', self.best_run_id)
-#                     # Save the model again as it's the best so far
-#                     self.model.save(MODEL_PATH, save_format='keras')
+            previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
+            if previous_best_run is not None and not previous_best_run.empty:
+                previous_best_val_accuracy = previous_best_run.iloc[0]['val_accuracy']
+                if self.best_val_accuracy > previous_best_val_accuracy:
+                    mlflow.log_param('best_epoch', self.best_epoch)
+                    mlflow.log_metric('best_val_accuracy', self.best_val_accuracy)
+                    self.best_run_id = mlflow.active_run().info.run_id
+                    mlflow.log_param('best_run_id', self.best_run_id)
+                    # Save the model again as it's the best so far
+                    self.model.save(MODEL_PATH, save_format='keras')
 
     def on_train_end(self, logs=None):
         # Only log the best validation accuracy if it's better than the current logged value
@@ -373,7 +373,7 @@ def train_model():
     '''
         
     # load mlflow
-    # setup_mlflow_experiment()
+    setup_mlflow_experiment()
     
     # new insertion
     # TODO: Probably this could be part of the api, the path to the training data?
@@ -392,7 +392,7 @@ def train_model():
 
     model.compile(
         optimizer=optimizers.Adam(learning_rate=0.001),
-        loss='sparse_categorical_crossentropy',
+        loss='categorical_crossentropy',
         metrics=['accuracy']
     )
     print('Model built ✅')
@@ -407,19 +407,19 @@ def train_model():
 
     # logging in mlflow
     # INFO: Starting MLflow
-    # mlflow_logger = MLFlowLogger()
+    mlflow_logger = MLFlowLogger()
     print('MLflow logger started ✅')
 
     # manually setting steps per epoch
-    steps_per_epoch = train_records // BATCH_SIZE
+    # steps_per_epoch = train_records // BATCH_SIZE
 
     print('Training classification head...', end='\r')
     history_1 = model.fit(
         train_data, 
         validation_data=val_data, 
         epochs=int(EPOCHS*0.7), 
-        steps_per_epoch=steps_per_epoch,
-        # callbacks=[checkpoint, mlflow_logger]
+        # steps_per_epoch=steps_per_epoch,
+        callbacks=[checkpoint, mlflow_logger]
     )
     print('Training classification ended ✅')
 
@@ -445,8 +445,8 @@ def train_model():
         train_data, 
         validation_data=val_data, 
         epochs=int(EPOCHS*0.3), 
-        steps_per_epoch=steps_per_epoch,
-        # callbacks=[checkpoint, mlflow_logger]
+        # steps_per_epoch=steps_per_epoch,
+        callbacks=[checkpoint, mlflow_logger]
     )
     print('Training classification ended ✅')
 
