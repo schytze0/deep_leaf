@@ -52,9 +52,12 @@ def _bytes_feature(value):
     Return:
     - A `tf.train.Feature` object, which contains the byte representation of the input.    
     '''
+
+    # INFO: return back to 255 since `encode_jpeg()` expects this!
+    value_uint8 = tf.cast(tf.clip_by_value(value * 255, 0, 255), tf.uint8)
     return tf.train.Feature(
         bytes_list=tf.train.BytesList(
-            value=[tf.io.encode_jpeg(value).numpy()]
+            value=[tf.io.encode_jpeg(value_uint8).numpy()]
         )
     )
 
