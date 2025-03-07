@@ -8,6 +8,18 @@ from helpers import load_tfrecord_data
 import mlflow
 import mlflow.keras
 from dotenv import load_dotenv
+from fastapi import FastAPI # nvd06
+from pydantic import BaseModel # nvd06
+
+app = FastAPI() # nvd06
+
+class TrainRequest(BaseModel):  # Added Pydantic model nvd06
+    dataset_path: str
+
+@app.post("/train")  # Created FastAPI endpoint for training nvd06
+async def train_model_endpoint(request: TrainRequest):
+    train_model(request.dataset_path)
+    return {"message": "Model training started."}
 
 # Access dagshub 
 # Load environment variables from .env file
@@ -104,7 +116,7 @@ def get_best_epoch_and_accuracy():
         return None, None
 
 # Old function adjusted
-def train_model():
+def train_model(dataset_path): # modified the function to accept dataset_path nvd06
     '''
     Trains the model in two phases:
     1. Train only the classification head (with frozen base layers).
@@ -211,5 +223,5 @@ def train_model():
     print(f'Training completed. Model saved at {MODEL_PATH} ✅')
 
 if __name__ == '__main__':
-    train_model()
-
+    dataset_path = 'data/raw/train_subset1.tfrecord'  # We update this path as we need nvd06 
+    train_model(dataset_path)

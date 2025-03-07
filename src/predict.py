@@ -5,6 +5,11 @@ from tensorflow.keras.preprocessing import image
 # from data_loader import load_data
 from config import MODEL_PATH, IMG_SIZE, TEST_PATH
 from helpers import load_tfrecord_data
+from typing import Union # nvd06
+import uvicorn #nvd06
+from fastapi import FastAPI, File, UploadFile # nvd06
+from fastapi.responses import JSONResponse # nvd06
+
 
 def load_trained_model():
     '''
@@ -68,6 +73,21 @@ def predict_single_image(img_path):
 
     return class_labels[class_index]  # Return class label instead of index
 
+# Adding FastAPI endpoint nvd06
+app = FastAPI(
+    title="Image Classification API",
+    description="Predicts the class of an uploaded image."
+) 
+
+@app.post("/predict/")
+async def predict_api(file: UploadFile = File(...)):
+    """
+    Endpoint for image classification.
+    # ... (rest of the prediction endpoint code) ...
+    """ 
+    
+# End of the FastAPI endpoint nvd06 
+
 # TODO: We just want to predict single images to make it easier.
 def predict_folder(folder_path):
     '''
@@ -102,4 +122,6 @@ if __name__ == '__main__':
     print('\nPredictions for Test Set:')
     for filename, label in results.items():
         print(f'{filename}: {label}')
-
+    
+    # Start the FastAPI app nvd06
+    uvicorn.run(app, host="0.0.0.0", port=8000)
