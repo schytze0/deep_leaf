@@ -66,8 +66,6 @@ def setup_mlflow_experiment():
     mlflow.set_tracking_uri('https://dagshub.com/schytze0/deep_leaf.mlflow')
     mlflow.set_experiment('Plant_Classification_Experiment')
 
-    mlflow.start_run()
-
     # parameters for logging
     mlflow.log_param('model', 'VGG16')
     mlflow.log_param('epochs', EPOCHS)
@@ -154,13 +152,15 @@ def train_model():
     # steps_per_epoch = train_records // BATCH_SIZE
 
     print('Training classification head...', end='\r')
-    history_1 = model.fit(
-        train_data, 
-        validation_data=val_data, 
-        epochs=int(EPOCHS*0.7), 
-        # steps_per_epoch=steps_per_epoch,
-        callbacks=[checkpoint, mlflow_logger]
-    )
+
+    with mlflow.start_run():
+        history_1 = model.fit(
+            train_data, 
+            validation_data=val_data, 
+            epochs=int(EPOCHS*0.7), 
+            # steps_per_epoch=steps_per_epoch,
+            callbacks=[checkpoint, mlflow_logger]
+        )
     print('Training classification ended ✅')
 
 
