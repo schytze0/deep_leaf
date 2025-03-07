@@ -11,3 +11,4 @@ data/
 models/
 dvc_local/
 /data
+/models
