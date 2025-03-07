@@ -46,19 +46,26 @@ class MLFlowLogger(callbacks.Callback):
                 self.best_run_id = mlflow.active_run().info.run_id
 
     def on_train_end(self, logs=None):
-        if self.best_run_id is None:
-            previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
+        # Only log the best validation accuracy if it's better than the current logged value
+        if self.best_val_accuracy > mlflow.active_run().data.params.get('best_val_accuracy', 0):
+            mlflow.log_param('best_val_accuracy', self.best_val_accuracy)
+            mlflow.log_param('best_epoch', self.best_epoch)
+            mlflow.log_param('best_run_id', self.best_run_id)
+            print(f'Best Validation Accuracy: {self.best_val_accuracy} at epoch {self.best_epoch} at run {self.best_run_id}')
+            
+        # if self.best_run_id is None:
+        #     previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
 
-            previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
-            if previous_best_run is not None and not previous_best_run.empty:
-                previous_best_val_accuracy = previous_best_run.iloc[0]['val_accuracy']
-                if self.best_val_accuracy > previous_best_val_accuracy:
-                    mlflow.log_param('best_epoch', self.best_epoch)
-                    mlflow.log_metric('best_val_accuracy', self.best_val_accuracy)
-                    self.best_run_id = mlflow.active_run().info.run_id
-                    mlflow.log_param('best_run_id', self.best_run_id)
-                    # Save the model again as it's the best so far
-                    self.model.save(MODEL_PATH, save_format='keras')
+        #     previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
+        #     if previous_best_run is not None and not previous_best_run.empty:
+        #         previous_best_val_accuracy = previous_best_run.iloc[0]['val_accuracy']
+        #         if self.best_val_accuracy > previous_best_val_accuracy:
+        #             mlflow.log_param('best_epoch', self.best_epoch)
+        #             mlflow.log_metric('best_val_accuracy', self.best_val_accuracy)
+        #             self.best_run_id = mlflow.active_run().info.run_id
+        #             mlflow.log_param('best_run_id', self.best_run_id)
+        #             # Save the model again as it's the best so far
+        #             self.model.save(MODEL_PATH, save_format='keras')
 
 def setup_mlflow_experiment():
     # TODO: set up later after Yannick created dagshub
