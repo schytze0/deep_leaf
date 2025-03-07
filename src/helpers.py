@@ -20,9 +20,16 @@ def _parse_function(proto):
     # Resize to (224, 224)
     image = tf.image.resize(image, IMG_SIZE)  
     
+    # cast image and rescale
+    image = tf.cast(image, tf.float32)
+    image = image * 255
+
     # Preprocess the image using VGG16-specific preprocessing
     image = preprocess_input(image)
 
+    # ensuring labels are in rage [0, NUM_CLASSES - 1]
+    label = tf.clip_by_value(parsed_features['label'], 0, NUM_CLASSES - 1)
+    
     # One-hot encode the label (assuming 38 classes)
     label = tf.one_hot(parsed_features['label'], depth=NUM_CLASSES)
 
@@ -36,7 +43,7 @@ def load_tfrecord_data(tfrecord_file):
     dataset = dataset.map(_parse_function)
 
     # Shuffle, batch, and prefetch the dataset for performance
-    dataset = dataset.shuffle(buffer_size=10000)
+    dataset = dataset.shuffle(buffer_size=1000)
     dataset = dataset.batch(BATCH_SIZE)
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
