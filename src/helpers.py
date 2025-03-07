@@ -22,7 +22,6 @@ def _parse_function(proto):
     
     # cast image and rescale
     image = tf.cast(image, tf.float32)
-    image = image * 255
 
     # Preprocess the image using VGG16-specific preprocessing
     image = preprocess_input(image)

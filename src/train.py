@@ -38,21 +38,30 @@ class MLFlowLogger(callbacks.Callback):
             mlflow.log_metric('val_loss', logs.get('val_loss'), step=epoch)
             mlflow.log_metric('val_accuracy', logs.get('val_accuracy'), step=epoch)
 
+            # INFO: Outcommented since we don't want to save the best, we want to compare the last, don't we?
             # checking if it is the best epoch based on validation
-            val_accuracy = logs.get('val_accuracy')
-            if val_accuracy > self.best_val_accuracy:
-                self.best_val_accuracy = val_accuracy
-                self.best_epoch = epoch
-                self.best_run_id = mlflow.active_run().info.run_id
+            # val_accuracy = logs.get('val_accuracy')
+            # if val_accuracy > self.best_val_accuracy:
+            #     self.best_val_accuracy = val_accuracy
+            #     self.best_epoch = epoch
+            #     self.best_run_id = mlflow.active_run().info.run_id
 
     def on_train_end(self, logs=None):
+        # Log the last validation accuracy at the end of training
+        final_val_accuracy = logs.get('val_accuracy')
         # Only log the best validation accuracy if it's better than the current logged value
-        if self.best_val_accuracy > mlflow.active_run().data.params.get('best_val_accuracy', 0):
+        if final_val_accuracy > mlflow.active_run().data.params.get('best_val_accuracy', 0):
+            print(f'Old best value: {mlflow.active_run().data.params.get('best_val_accuracy')}, training\'s value: {final_val_accuracy}')
             mlflow.log_param('best_val_accuracy', self.best_val_accuracy)
             mlflow.log_param('best_epoch', self.best_epoch)
             mlflow.log_param('best_run_id', self.best_run_id)
-            print(f'Best Validation Accuracy: {self.best_val_accuracy} at epoch {self.best_epoch} at run {self.best_run_id}')
-            
+            print(f'Last Validation Accuracy (saved as best_val_accuracy): {final_val_accuracy} at epoch {self.best_epoch} at run {self.best_run_id}')
+
+
+            # Save the model at the end of training
+            self.model.save(MODEL_PATH, save_format='keras')
+            print(f'best_val_accuracy updated and model saved at {MODEL_PATH} ✅')
+
         # if self.best_run_id is None:
         #     previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
 
@@ -69,7 +78,6 @@ class MLFlowLogger(callbacks.Callback):
 
 def setup_mlflow_experiment():
     # TODO: set up later after Yannick created dagshub
-    # DEBUG: Yannik, here you have to add the repository name and give each of us access to the repo via the API
     mlflow.set_tracking_uri('https://dagshub.com/schytze0/deep_leaf.mlflow')
     mlflow.set_experiment('Plant_Classification_Experiment')
 
@@ -88,7 +96,6 @@ def setup_mlflow_experiment():
     mlflow.log_metric('val_loss', 0, step=0)
 
 # TODO: Created function to get best epoch (accuracy):
-# DEBUG: Erwin, might already work, this was my first approach. Saving the new model is above after each epoch
 def get_best_epoch_and_accuracy():
     # Fetching the best run from MLflow
     best_run = mlflow.search_runs(order_by=["val_accuracy desc"]).head(1)
@@ -138,7 +145,8 @@ def train_model():
     model.compile(
         optimizer=optimizers.Adam(learning_rate=0.001),
         loss='categorical_crossentropy',
-        metrics=['accuracy']
+        metrics=['accuracy'],
+        # clipvalue=1.0 # DEBUG(PHIL): this might be uncommented later on if not working
     )
     print('Model built ✅')
 
@@ -160,14 +168,13 @@ def train_model():
 
     print('Training classification head...', end='\r')
 
-    with mlflow.start_run():
-        history_1 = model.fit(
-            train_data, 
-            validation_data=val_data, 
-            epochs=int(EPOCHS*0.7), 
-            # steps_per_epoch=steps_per_epoch,
-            callbacks=[checkpoint, mlflow_logger]
-        )
+    history_1 = model.fit(
+        train_data, 
+        validation_data=val_data, 
+        epochs=int(EPOCHS*0.7), 
+        # steps_per_epoch=steps_per_epoch,
+        callbacks=[checkpoint, mlflow_logger]
+    )
     print('Training classification ended ✅')
 
 
@@ -184,7 +191,8 @@ def train_model():
     model.compile(
         optimizer=optimizers.Adam(learning_rate=0.0001),
         loss='categorical_crossentropy',
-        metrics=['accuracy']
+        metrics=['accuracy'],
+        # clipvalue=1.0 # DEBUG(PHIL): this might be uncommented later on if not working
     )
 
     print('Training classification head...', end='\r')
@@ -215,7 +223,7 @@ def train_model():
         json.dump(history, f)
         print(f'History saved in {HISTORY_PATH} ✅.')
 
-    print(f'Training completed. Model saved at {MODEL_PATH} ✅')
+    print('Training completed.')
 
 if __name__ == '__main__':
     train_model()
