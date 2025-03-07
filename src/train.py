@@ -47,9 +47,9 @@ class MLFlowLogger(callbacks.Callback):
             # checking if it is the best epoch based on validation
             val_accuracy = logs.get('val_accuracy')
             if val_accuracy > self.best_val_accuracy:
-                self.best_val_accuracy = val_accuracy
-                self.best_epoch = epoch
-                self.best_run_id = mlflow.active_run().info.run_id
+               self.best_val_accuracy = val_accuracy
+               self.best_epoch = epoch
+               self.best_run_id = mlflow.active_run().info.run_id
 
     def on_train_end(self, logs=None):
         if self.best_run_id is None:
