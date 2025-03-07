@@ -10,8 +10,7 @@ matplotlib
 Pillow
 kagglehub
 json5
-tensorflow-metal
-tensorflow-macos
+tensorflow
 tqdm
 mlflow
 docker
@@ -21,7 +20,6 @@ grafana-client
 apache-airflow
 celery
 redis
-psycopg2
 sqlalchemy
 loguru
 pytest
@@ -29,3 +27,4 @@ scipy
 seaborn
 plotly
 python-dotenv
+pathlib
