@@ -28,3 +28,4 @@ seaborn
 plotly
 python-dotenv
 pathlib
+dvc

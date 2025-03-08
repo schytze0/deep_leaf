@@ -8,7 +8,9 @@ tf-gpu/
 README.html
 .DS_Store
 data/
-models/
 dvc_local/
 /data
 /venv_leaf/
+models/*.keras
+!models/*.dvc
+!models/metadata.txt
