@@ -14,3 +14,5 @@ dvc_local/
 models/*.keras
 !models/*.dvc
 !models/metadata.txt
+models/
+dev-erwin/
