@@ -408,14 +408,22 @@ def get_model_accuracy_from_metadata(model_path):
 #     print("Failed to retrieve the best model")
 #########################################################################################
 
-# Old function adjusted
-def train_model(dataset_path): # modified the function to accept dataset_path nvd06
+# MAIN FUNCTION FOR TRAINING
+# REVIEW: Adjusted to optional for local running
+def train_model(dataset_path: str = None): # modified the function to accept dataset_path nvd06
     '''
     Trains the model in two phases:
     1. Train only the classification head (with frozen base layers).
     2. Fine-tune the top layers of the base model with a smaller learning rate.
     3. Integrates MLflow to track scores (helpful if different training data is used; NOT TESTED YET)
+    
+    Arguments:
+    - dataset_path: ???
+
+    Returns: None   
+    
     '''
+
         
     # load mlflow
     setup_mlflow_experiment()
@@ -438,17 +446,17 @@ def train_model(dataset_path): # modified the function to accept dataset_path nv
     model.compile(
         optimizer=optimizers.Adam(learning_rate=0.001),
         loss='categorical_crossentropy',
-        metrics=['accuracy']
+        metrics=['accuracy', F1Score(name='f1_score')]
     )
     print('Model built ✅')
 
     # Callbacks
-    checkpoint = callbacks.ModelCheckpoint(
-        MODEL_PATH, 
-        save_best_only=True, 
-        monitor='val_accuracy', 
-        mode='max'
-    )
+    # checkpoint = callbacks.ModelCheckpoint(
+    #     MODEL_PATH, 
+    #     save_best_only=True, 
+    #     monitor='val_accuracy', 
+    #     mode='max'
+    # )
 
     # logging in mlflow
     # INFO: Starting MLflow
@@ -464,7 +472,7 @@ def train_model(dataset_path): # modified the function to accept dataset_path nv
         validation_data=val_data, 
         epochs=int(EPOCHS*0.7), 
         # steps_per_epoch=steps_per_epoch,
-        callbacks=[checkpoint, mlflow_logger]
+        callbacks=[mlflow_logger]
     )
     print('Training classification ended ✅')
 
@@ -487,7 +495,7 @@ def train_model(dataset_path): # modified the function to accept dataset_path nv
     model.compile(
         optimizer=optimizer,
         loss='categorical_crossentropy',
-        metrics=['accuracy']
+        metrics=['accuracy', F1Score(name='f1_score')]
     )
 
     print('Fine-tuning head...', end='\r')
@@ -496,7 +504,7 @@ def train_model(dataset_path): # modified the function to accept dataset_path nv
         validation_data=val_data, 
         epochs=int(EPOCHS*0.3), 
         # steps_per_epoch=steps_per_epoch,
-        callbacks=[checkpoint, mlflow_logger]
+        callbacks=[mlflow_logger]
     )
     print('Fine-tuning ended ✅')
 
@@ -523,14 +531,13 @@ def train_model(dataset_path): # modified the function to accept dataset_path nv
     
 def update_model_if_better():
     """
-    Function combining functions above to compare and update model if better
+    Function combining functions above to compare and update model if better. Prints out message of result.
     
-    Returns:
-        str: Result message from the compare_and_update_model function
+    Returns: None
     """
     result = compare_and_update_model()
     print(f"Model management result: {result}")
-    return result
+    # return result
 
 if __name__ == '__main__':
     train_model()
