@@ -8,3 +8,5 @@ kagglehub
 json5
 tqdm
 mlflow
+fastapi
+uvicorn

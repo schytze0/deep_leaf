@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import optimizers, callbacks
+from tensorflow.keras import optimizers, callbacks # type: ignore
 import json
 from model import build_vgg16_model
 from config import MODEL_PATH, HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES
@@ -8,6 +8,18 @@ from helpers import load_tfrecord_data
 import mlflow
 import mlflow.keras
 from dotenv import load_dotenv
+from fastapi import FastAPI  # nvd06
+from pydantic import BaseModel # nvd06
+
+app = FastAPI()  # nvd06
+
+class TrainRequest(BaseModel):  # Added Pydantic model nvd06
+    dataset_path: str
+
+@app.post("/train")  # Created FastAPI endpoint for training nvd06
+async def train_model_endpoint(request: TrainRequest):
+    train_model(request.dataset_path)
+    return {"message": "Model training started."}
 
 import shutil
 import requests
@@ -51,6 +63,7 @@ class MLFlowLogger(callbacks.Callback):
                self.best_epoch = epoch
                self.best_run_id = mlflow.active_run().info.run_id
 
+
     def on_train_end(self, logs=None):
         if self.best_run_id is None:
             previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
@@ -73,6 +86,7 @@ class MLFlowLogger(callbacks.Callback):
             mlflow.log_param('best_epoch', self.best_epoch)
             mlflow.log_param('best_run_id', self.best_run_id)
             print(f'Best Validation Accuracy: {self.best_val_accuracy} at epoch {self.best_epoch} at run {self.best_run_id}')
+
 
 def setup_mlflow_experiment():
     # TODO: set up later after Yannick created dagshub
@@ -364,7 +378,7 @@ def get_model_accuracy_from_metadata(model_path):
 #########################################################################################
 
 # Old function adjusted
-def train_model():
+def train_model(dataset_path): # modified the function to accept dataset_path nvd06
     '''
     Trains the model in two phases:
     1. Train only the classification head (with frozen base layers).
@@ -485,4 +499,3 @@ def update_model_if_better():
 if __name__ == '__main__':
     train_model()
     update_model_if_better()
-

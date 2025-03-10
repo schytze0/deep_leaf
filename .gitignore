@@ -16,3 +16,4 @@ models/*.keras
 !models/metadata.txt
 models/
 dev-erwin/
+/models
