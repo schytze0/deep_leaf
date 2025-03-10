@@ -45,3 +45,7 @@ os.makedirs(LOGS_DIR, exist_ok=True)  # Ensure logs directory exists
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 HISTORY_PATH = os.path.join(LOGS_DIR, f"history_{TIMESTAMP}.json")
 NUM_CLASSES = 38
+
+# Dagshub credits
+DAGSHUB_REPO = "schytze0/deep_leaf"
+DAGSHUB_MODEL_PATH = "src/main/models"
