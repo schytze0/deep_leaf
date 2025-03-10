@@ -31,7 +31,7 @@ MODEL_PATH = os.path.join(MODEL_DIR, "plant_disease_model.keras")  # Path for sa
 # Training parameters
 BATCH_SIZE = 32
 IMG_SIZE = (224, 224)
-EPOCHS = 10
+EPOCHS = 5
 
 # Ensure the model directory exists
 if not os.path.exists(MODEL_DIR):
@@ -50,3 +50,4 @@ NUM_CLASSES = 38
 DAGSHUB_REPO = "schytze0/deep_leaf"
 MLFLOW_TRACKING_URL = 'https://dagshub.com/schytze0/deep_leaf.mlflow'
 MLFLOW_EXPERIMENT_NAME = 'Plant_Classification_Experiment'
+MODEL_DVC='production_model.keras.dvc'
