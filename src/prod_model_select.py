@@ -99,8 +99,11 @@ def check_metadata_exists():
 def dvc_push(repo_root):
     """Retry DVC push up to 3 times with exponential backoff."""
     subprocess.run(["dvc", "push"], cwd=repo_root, check=True)
-    print("Pushed model to DVC remote")
+    print("Pushed model to DVC remote ✅")
 
+    # REVIEW: Added git push after dvc push
+    subprocess.run(['git', 'push'], cwd=repo_root, check=True)
+    print("Pushed dvc changes to git ✅")
 # 
 def add_or_modify_remote_with_auth(dvc_remote, repo_root, dagshub_repo, token):
     '''
