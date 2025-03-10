@@ -7,13 +7,14 @@ my_readme.md
 tf-gpu/ 
 README.html
 .DS_Store
-data/
 dvc_local/
-/data
+src/trials.py
+
+# from Erwin?
 /venv_leaf/
-models/*.keras
-!models/*.dvc
-!models/metadata.txt
 dev-erwin/
-/models
+
+# DVC ignroes
+data/
 temp/
+models/production_model.keras
