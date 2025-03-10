@@ -7,6 +7,8 @@ import mlflow.keras
 from dotenv import load_dotenv
 from fastapi import FastAPI  
 from pydantic import BaseModel
+import subprocess 
+from pathlib import Path
 
 # imports from other scripts
 from config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME
@@ -271,6 +273,20 @@ def train_model(dataset_path: str = None): # modified the function to accept dat
         json.dump(history, f)
         print(f'History saved in {HISTORY_PATH} ✅.')
 
+    # make git commit for history 
+    # Git commit and push
+    repo_root = Path.cwd()
+    subprocess.run(
+        ['git', 'add', str(HISTORY_PATH)], 
+        cwd=repo_root, 
+        check=True
+    )
+    commit_msg = 'Updated history logs'
+    subprocess.run(
+        ['git', 'commit', '-m', commit_msg], 
+        cwd=repo_root, 
+        check=True
+    )
     print('Training completed. ✅')
 
 if __name__ == '__main__':
