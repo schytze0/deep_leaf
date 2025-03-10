@@ -178,10 +178,10 @@ def train_model(dataset_path: str = None): # modified the function to accept dat
     
     # new insertion
     # TODO: Probably this could be part of the api, the path to the training data?
-    train_data, train_records = load_tfrecord_data('data/raw/train_subset4.tfrecord')
+    train_data, train_records = load_tfrecord_data('data/raw/train_subset6.tfrecord')
     print('Training data loaded ✅')
 
-    val_data, val_records = load_tfrecord_data('data/raw/valid_subset4.tfrecord')
+    val_data, val_records = load_tfrecord_data('data/raw/valid_subset6.tfrecord')
     print('Validation data loaded ✅')
 
     input_shape = (224, 224, 3)
