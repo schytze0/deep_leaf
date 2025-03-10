@@ -73,7 +73,7 @@ def predict_single_image(img_path):
 
     return class_labels[class_index]  # Return class label instead of index
 
-# Adding FastAPI endpoint nvd06
+################# Adding FastAPI endpoint nvd06 #################
 app = FastAPI(
     title="Image Classification API",
     description="Predicts the class of an uploaded image."
@@ -86,7 +86,7 @@ async def predict_api(file: UploadFile = File(...)):
     # ... (rest of the prediction endpoint code) ...
     """ 
     
-# End of the FastAPI endpoint nvd06 
+################# End of the FastAPI endpoint nvd06 #################
 
 # TODO: We just want to predict single images to make it easier.
 def predict_folder(folder_path):
@@ -123,5 +123,5 @@ if __name__ == '__main__':
     for filename, label in results.items():
         print(f'{filename}: {label}')
     
-    # Start the FastAPI app nvd06
+    ################# Start the FastAPI app nvd06 #################
     uvicorn.run(app, host="0.0.0.0", port=8000)

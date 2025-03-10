@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import optimizers, callbacks
+from tensorflow.keras import optimizers, callbacks # type: ignore
 import json
 from model import build_vgg16_model
 from config import MODEL_PATH, HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES
@@ -8,10 +8,10 @@ from helpers import load_tfrecord_data
 import mlflow
 import mlflow.keras
 from dotenv import load_dotenv
-from fastapi import FastAPI # nvd06
+from fastapi import FastAPI  # nvd06
 from pydantic import BaseModel # nvd06
 
-app = FastAPI() # nvd06
+app = FastAPI()  # nvd06
 
 class TrainRequest(BaseModel):  # Added Pydantic model nvd06
     dataset_path: str
@@ -223,5 +223,5 @@ def train_model(dataset_path): # modified the function to accept dataset_path nv
     print(f'Training completed. Model saved at {MODEL_PATH} ✅')
 
 if __name__ == '__main__':
-    dataset_path = 'data/raw/train_subset1.tfrecord'  # We update this path as we need nvd06 
+    dataset_path = 'data/raw/train_subset1.tfrecord'  # We update this path as we need it nvd06 
     train_model(dataset_path)
