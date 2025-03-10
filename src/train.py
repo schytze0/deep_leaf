@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras import optimizers, callbacks # type: ignore
 import json
 from model import build_vgg16_model
-from config import MODEL_PATH, HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, DAGSHUB_REPO, DAGSHUB_MODEL_PATH
+from config import MODEL_PATH, HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, DAGSHUB_REPO, DAGSHUB_MODEL_PATH, MLFLOW_TRACKING_URL
 import os
 from helpers import load_tfrecord_data
 import mlflow
@@ -10,6 +10,11 @@ import mlflow.keras
 from dotenv import load_dotenv
 from fastapi import FastAPI  
 from pydantic import BaseModel
+import shutil
+import requests
+from pathlib import Path
+import git
+import tempfile
 
 app = FastAPI()  
 
@@ -21,11 +26,27 @@ async def train_model_endpoint(request: TrainRequest):
     train_model(request.dataset_path)
     return {"message": "Model training started."}
 
-import shutil
-import requests
-from pathlib import Path
-import git
-import tempfile
+# new class F1-Score
+
+# F1 score to get better reporting
+class F1Score(tf.keras.metrics.Metric):
+    def __init__(self, name="f1_score", **kwargs):
+        super(F1Score, self).__init__(name=name, **kwargs)
+        self.precision = tf.keras.metrics.Precision()
+        self.recall = tf.keras.metrics.Recall()
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        self.precision.update_state(y_true, y_pred)
+        self.recall.update_state(y_true, y_pred)
+
+    def result(self):
+        precision = self.precision.result()
+        recall = self.recall.result()
+        return 2 * ((precision * recall) / (precision + recall + tf.keras.backend.epsilon()))
+
+    def reset_states(self):
+        self.precision.reset_states()
+        self.recall.reset_states()
 
 # Access dagshub 
 # Load environment variables from .env file
@@ -54,26 +75,41 @@ class MLFlowLogger(callbacks.Callback):
         if logs:
             mlflow.log_metric('train_loss', logs.get('loss'), step=epoch)
             mlflow.log_metric('train_accuracy', logs.get('accuracy'), step=epoch)
+            mlflow.log_metric('train_f1_score', logs.get('f1_score'), step=epoch)
             mlflow.log_metric('val_loss', logs.get('val_loss'), step=epoch)
             mlflow.log_metric('val_accuracy', logs.get('val_accuracy'), step=epoch)
+            mlflow.log_metric('val_f1_score', logs.get('val_f1_score'), step=epoch)
 
             # checking if it is the best epoch based on validation
             val_accuracy = logs.get('val_accuracy')
+            val_f1_score = logs.get('val_f1_score')
+
             if val_accuracy > self.best_val_accuracy:
-               self.best_val_accuracy = val_accuracy
-               self.best_epoch = epoch
-               self.best_run_id = mlflow.active_run().info.run_id
+                self.best_val_accuracy = val_accuracy
+                self.best_val_f1_score = val_f1_score
+                self.best_epoch = epoch
+                self.best_run_id = mlflow.active_run().info.run_id
+                mlflow.log_metric('best_val_accuracy', self.best_val_accuracy)
+                mlflow.log_metric('best_val_f1_score', self.best_val_f1_score)
+                print(f'Updated best validation accuracy: {round(val_accuracy, 4)} ✅')
+
 
     def on_train_end(self, logs=None):
-        # Only log the best validation accuracy if it's better than the current logged value
-        if self.best_val_accuracy > mlflow.active_run().data.params.get('best_val_accuracy', 0):
-            mlflow.log_param('best_val_accuracy', self.best_val_accuracy)
-            mlflow.log_param('best_epoch', self.best_epoch)
-            mlflow.log_param('best_run_id', self.best_run_id)
-            print(f'Best Validation Accuracy: {self.best_val_accuracy} at epoch {self.best_epoch} at run {self.best_run_id}')
+        # Logging of final scores (depending on what to do we might be interested in best value throughout epochs or the final score)
+        mlflow.log_metric('final_val_accuracy', logs.get('val_accuracy', 0))
+        mlflow.log_metric('final_val_f1_score', logs.get('val_f1_score', 0))
+        print(f'Final validation accuracy: {round(logs.get("val_accuracy", 0), 4)}')
+
+        # change best_val_accuracy if value is better
+        if logs.get("val_accuracy", 0) > self.best_val_accuracy:
+            mlflow.log_metric('best_val_accuracy', self.val_accuracy)
+            mlflow.log_metric('best_run_id', mlflow.active_run().info.run_id)
+        
+        # print best values
+        print(f'Best Validation Accuracy: {self.best_val_accuracy} at run {self.best_run_id}')
 
 def setup_mlflow_experiment():
-    mlflow.set_tracking_uri('https://dagshub.com/schytze0/deep_leaf.mlflow')
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
     mlflow.set_experiment('Plant_Classification_Experiment')
 
     # parameters for logging
@@ -82,9 +118,18 @@ def setup_mlflow_experiment():
     mlflow.log_param('batch_size', BATCH_SIZE)
     mlflow.log_param('num_classes', NUM_CLASSES)
     mlflow.log_param('input_shape', (224, 224, 3))
-    mlflow.log_param('best_run_id', 0)
-    mlflow.log_param('best_epoch', 0)
-    mlflow.log_param('best_val_accuracy', 0)
+
+    # Final metrics
+    mlflow.log_metric('final_val_accuracy', 0)
+    mlflow.log_metric('final_val_f1_score', 0)
+
+    # Best metrics
+    mlflow.log_metric('best_val_accuracy', 0)
+    mlflow.log_metric('best_val_f1_score', 0)
+    mlflow.log_metric('best_run_id', 0)
+    mlflow.log_metric('best_epoch', 0)
+    
+    # Epoch metrics
     mlflow.log_metric('val_accuracy', 0, step=0)
     mlflow.log_metric('train_loss', 0, step=0)
     mlflow.log_metric('train_accuracy', 0, step=0)
@@ -103,7 +148,7 @@ def get_best_model():
         best_val_accuracy (float): Validation accuracy of the best model in MLFlow experiments
     """
     # Set the MLFlow tracking URI --> not set globally
-    mlflow.set_tracking_uri('https://dagshub.com/schytze0/deep_leaf.mlflow')
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
     mlflow.set_experiment('Plant_Classification_Experiment')
     
     # Search for the best run based on 'validation accuracy'
