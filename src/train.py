@@ -98,15 +98,15 @@ class MLFlowLogger(callbacks.Callback):
             logs = {}
 
         # Logging of final scores (depending on what to do we might be interested in best value throughout epochs or the final score)
-        final_val_accuracy = logs.get("val_accuracy")
-        final_val_f1_score = logs.get("val_f1_score")
+        self.final_val_accuracy = logs.get("val_accuracy")
+        self.final_val_f1_score = logs.get("val_f1_score")
 
-        mlflow.log_metric('final_val_accuracy', final_val_accuracy)
-        mlflow.log_metric('final_val_f1_score', final_val_f1_score)
+        mlflow.log_metric('final_val_accuracy', self.final_val_accuracy)
+        mlflow.log_metric('final_val_f1_score', self.final_val_f1_score)
 
         # print best values
         print(f'Best Validation Accuracy: {self.best_val_accuracy:.4f}')
-        print(f'Final validation accuracy: {final_val_accuracy:.4f}')
+        print(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
 
 def setup_mlflow_experiment():
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
@@ -176,10 +176,10 @@ def train_model(dataset_path: str = None): # modified the function to accept dat
     
     # new insertion
     # TODO: Probably this could be part of the api, the path to the training data?
-    train_data, train_records = load_tfrecord_data('data/raw/train_subset2.tfrecord')
+    train_data, train_records = load_tfrecord_data('data/raw/train_subset4.tfrecord')
     print('Training data loaded ✅')
 
-    val_data, val_records = load_tfrecord_data('data/raw/valid_subset2.tfrecord')
+    val_data, val_records = load_tfrecord_data('data/raw/valid_subset4.tfrecord')
     print('Validation data loaded ✅')
 
     input_shape = (224, 224, 3)
