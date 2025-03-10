@@ -5,10 +5,7 @@ from tensorflow.keras.preprocessing import image
 # from data_loader import load_data
 from config import MODEL_PATH, IMG_SIZE, TEST_PATH
 from helpers import load_tfrecord_data
-from typing import Union # nvd06
-import uvicorn #nvd06
-from fastapi import FastAPI, File, UploadFile # nvd06
-from fastapi.responses import JSONResponse # nvd06
+from io import BytesIO
 
 
 def load_trained_model():
@@ -39,7 +36,7 @@ def get_class_labels():
 
     return class_labels
 
-def preprocess_image(img_path):
+def preprocess_image(file): # nvd06: changed from image_path to file to fit the main.yp and FastAPI setup. 
     '''
     Loads and preprocesses a single image for model prediction.
 
@@ -49,12 +46,12 @@ def preprocess_image(img_path):
     Returns:
     - img_array: Preprocessed image array.
     '''
-    img = image.load_img(img_path, target_size=IMG_SIZE)
+    img = image.load_img(BytesIO(file.file.read()), target_size=IMG_SIZE) # added the BytesIO part nvd06
     img_array = image.img_to_array(img) / 255.0  # Normalize pixel values
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     return img_array
 
-def predict_single_image(img_path):
+def predict_single_image(file): # nvd06: changed from image_path to file to fit the main.yp and FastAPI setup.
     '''
     Predicts the class of a single image.
 
@@ -66,27 +63,11 @@ def predict_single_image(img_path):
     '''
     model = load_trained_model()
     class_labels = get_class_labels()  # Get dynamic class labels
-    img_array = preprocess_image(img_path)
-
+    img_array = preprocess_image(file) # nvd06: changed from image_path to file to fit the main.yp and FastAPI setup.
     predictions = model.predict(img_array)
     class_index = np.argmax(predictions, axis=1)[0]
 
     return class_labels[class_index]  # Return class label instead of index
-
-################# Adding FastAPI endpoint nvd06 #################
-app = FastAPI(
-    title="Image Classification API",
-    description="Predicts the class of an uploaded image."
-) 
-
-@app.post("/predict/")
-async def predict_api(file: UploadFile = File(...)):
-    """
-    Endpoint for image classification.
-    # ... (rest of the prediction endpoint code) ...
-    """ 
-    
-################# End of the FastAPI endpoint nvd06 #################
 
 # TODO: We just want to predict single images to make it easier.
 def predict_folder(folder_path):
@@ -122,6 +103,4 @@ if __name__ == '__main__':
     print('\nPredictions for Test Set:')
     for filename, label in results.items():
         print(f'{filename}: {label}')
-    
-    ################# Start the FastAPI app nvd06 #################
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
