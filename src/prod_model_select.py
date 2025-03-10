@@ -7,11 +7,21 @@ from dotenv import load_dotenv
 from pathlib import Path
 import tenacity
 
+# imports from config
+from config import MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME, DAGSHUB_REPO
+
 # Ensure script runs from this file path (or any of yours)
-os.chdir("/home/olaf_wauzi/deep_leaf")  # If main branch clone is elsewhere (e.g., /home/olaf_wauzi/deep_leaf_main), update this path
+# REVIEW: Saved clone directory into .env, since it is for each of us different
+os.chdir(os.getenv("CLONE_DIR"))  # If main branch clone is elsewhere (e.g., /home/olaf_wauzi/deep_leaf_main), update this path
 
 def load_environment():
-    """Load environment variables from .env file"""
+    """
+    Load environment variables from .env file
+    
+    Returns:
+    - username: DAGSHUB_USERNAME from .env
+    - token: DAGSHUB_TOKEN from .env
+    """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     dotenv_path = os.path.join(script_dir, "..", ".env")
     
@@ -27,8 +37,6 @@ def load_environment():
     if not username or not token:
         raise ValueError("DAGSHUB_USERNAME or DAGSHUB_KEY not set in .env")
     
-    os.environ['MLFLOW_TRACKING_USERNAME'] = username
-    os.environ['MLFLOW_TRACKING_PASSWORD'] = token
     print(f"Loaded credentials - Username: {username}")
     return username, token
 
@@ -39,8 +47,9 @@ def get_best_model():
     Returns:
         tuple: (model_path, best_val_accuracy, run_id)
     """
-    mlflow.set_tracking_uri('https://dagshub.com/schytze0/deep_leaf.mlflow')
-    mlflow.set_experiment('Plant_Classification_Experiment')
+    # REVIEW: added both strings into config.py for faster change
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
     
     best_run = mlflow.search_runs(order_by=["metrics.val_accuracy DESC"]).head(1)
     if best_run.empty:
@@ -52,6 +61,7 @@ def get_best_model():
     print(f"Best run ID: {run_id}, Validation accuracy: {best_val_accuracy:.4f}")
 
     model_uri = f"runs:/{run_id}/model"
+    # REVIEW: Maybe saving to not versioned folder temp within the cloned directory?
     local_model_path = mlflow.artifacts.download_artifacts(artifact_uri=model_uri)
     print(f"Model downloaded to: {local_model_path}")
     # Debug: List files to confirm structure
@@ -62,7 +72,8 @@ def get_best_model():
 def check_metadata_exists():
     """Check if metadata.txt exists in repo root and get its accuracy."""
     repo_root = Path.cwd()
-    metadata_path = repo_root / "metadata.txt"
+    # REVIEW: Changed to save metadata also under models/
+    metadata_path = repo_root / "models/metadata.txt"
     dvc_pointer_path = repo_root / "models.dvc"
     
     if metadata_path.exists():
@@ -87,13 +98,13 @@ def dvc_push(repo_root):
     subprocess.run(["dvc", "push"], cwd=repo_root, check=True)
     print("Pushed model to DVC remote")
 
-def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, branch="dev-erwin"):  # change to branch="main"
+def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, branch="main"): 
     """
-    Copy the best model file into src/dev-erwin/models/, create a DVC pointer file (models.dvc)
-    and metadata.txt in the repo root, then commit and push changes.
+    Copy the best model file into src/main/models/, create a DVC pointer file (models.dvc) and metadata.txt in the repo root, then commit and push changes.
     """
     repo_root = Path.cwd()
-    target_dir = repo_root / "src" / "dev-erwin" / "models"  # If main branch uses a different structure (e.g., src/models/), update to repo_root / "src" / "models".
+    # REVIEW: changed to folder models directly, the change via branches is made by git branch checkout.
+    target_dir = repo_root / "models"  
     target_dir.mkdir(parents=True, exist_ok=True)
     
     # Directly fetch model.keras from the data/ subdirectory
@@ -103,19 +114,21 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
         print(f"Error: No model.keras found at {source_model_file}. Available files: {artifact_files}")
         raise FileNotFoundError(f"No model.keras found in {model_artifact_path}/data")
     
-    dest_model_file = target_dir / "plant_disease_model.keras"
+    dest_model_file = target_dir / "production_model.keras"
     shutil.copy2(source_model_file, dest_model_file)
     print(f"Copied model to {dest_model_file}")
     
     # Track with DVC
     subprocess.run(["dvc", "add", dest_model_file], cwd=repo_root, check=True)
-    dvc_file = target_dir / "plant_disease_model.keras.dvc"
+    # REVIEW: THis part did not work from me, with uncommenting it worked
+    # dvc_file = target_dir / "production_model.keras.dvc"
     target_dvc_file = repo_root / "models.dvc"
-    shutil.move(dvc_file, target_dvc_file)
-    print(f"Moved DVC pointer to {target_dvc_file}")
+    # shutil.move(dvc_file, target_dvc_file)
+    # print(f"Moved DVC pointer to {target_dvc_file}")
     
     # Update metadata.txt in repo root
-    metadata_path = repo_root / "metadata.txt"
+    # REVIEW: Changed location of metadata.txt into models
+    metadata_path = repo_root / "models/metadata.txt"
     with open(metadata_path, "w") as f:
         f.write(str(val_accuracy))
     print(f"Updated {metadata_path} with accuracy: {val_accuracy:.4f}")
@@ -129,8 +142,11 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
     
     # Configure DVC remote and push with retry
     dvc_remote = "origin"
-    subprocess.run(["dvc", "remote", "add", "-f", "-d", dvc_remote, "https://dagshub.com/schytze0/deep_leaf.dvc"],
-                   cwd=repo_root, check=True)
+    # REVIEW: Added variable from config instead of the string (DAGSHUB_REPO)
+    subprocess.run(
+        ["dvc", "remote", "add", "-f", "-d", dvc_remote, DAGSHUB_REPO, ".dvc"],
+        cwd=repo_root, check=True
+        )
     subprocess.run(["dvc", "remote", "modify", dvc_remote, "--local", "auth", "basic"], cwd=repo_root, check=True)
     subprocess.run(["dvc", "remote", "modify", dvc_remote, "--local", "user", username], cwd=repo_root, check=True)
     subprocess.run(["dvc", "remote", "modify", dvc_remote, "--local", "password", token], cwd=repo_root, check=True)
@@ -145,11 +161,11 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
 def manual_upload_instructions(username, model_path, val_accuracy):
     print("\n=== MANUAL UPLOAD INSTRUCTIONS ===")
     print(f"1. Locate model.keras in: {model_path}/data")
-    print("2. Rename to 'plant_disease_model.keras' and move to 'src/dev-erwin/models/'")  # If main branch uses src/models/, update to 'src/models/'.
-    print("3. Run: dvc add src/dev-erwin/models/plant_disease_model.keras")  # If main branch uses src/models/, update to 'dvc add src/models/plant_disease_model.keras'.
-    print(f"4. Create/update metadata.txt with: {val_accuracy}")
-    print("5. Run: git add models.dvc metadata.txt")
-    print("6. Run: git commit -m 'Update model' && git push origin dev-erwin")  # Change "dev-erwin" to "main" after merging into main branch.
+    print("2. Rename to 'plant_disease_model.keras' and move to 'models/'")  # If main branch uses src/models/, update to 'src/models/'.
+    print("3. Run: dvc add models/plant_disease_model.keras")  # If main branch uses src/models/, update to 'dvc add src/models/plant_disease_model.keras'.
+    print(f"4. Create/update models/metadata.txt with: {val_accuracy}")
+    print("5. Run: git add models.dvc models/metadata.txt")
+    print("6. Run: git commit -m 'Update model' && git push origin main")  # Change "dev-erwin" to "main" after merging into main branch.
     print("7. Run: dvc push")
     print("===============================\n")
 
