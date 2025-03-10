@@ -1,6 +1,5 @@
 outs:
-- md5: 163eee147cf52127625250541b34be44
-  size: 129899386
-
+- md5: 47a673122759cf87f4e9cb8ef2bbf38e
+  size: 163052385
   hash: md5
-  path: plant_disease_model.keras
+  path: production_model.keras
