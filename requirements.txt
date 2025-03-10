@@ -10,3 +10,4 @@ tqdm
 mlflow
 fastapi
 uvicorn
+update_model_if_better
