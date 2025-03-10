@@ -2,21 +2,21 @@ import tensorflow as tf
 from tensorflow.keras import optimizers, callbacks # type: ignore
 import json
 from model import build_vgg16_model
-from config import MODEL_PATH, HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES
+from config import MODEL_PATH, HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, DAGSHUB_REPO, DAGSHUB_MODEL_PATH
 import os
 from helpers import load_tfrecord_data
 import mlflow
 import mlflow.keras
 from dotenv import load_dotenv
-from fastapi import FastAPI  # nvd06
-from pydantic import BaseModel # nvd06
+from fastapi import FastAPI  
+from pydantic import BaseModel
 
-app = FastAPI()  # nvd06
+app = FastAPI()  
 
-class TrainRequest(BaseModel):  # Added Pydantic model nvd06
+class TrainRequest(BaseModel):  # Added Pydantic model 
     dataset_path: str
 
-@app.post("/train")  # Created FastAPI endpoint for training nvd06
+@app.post("/train")  # Created FastAPI endpoint for training 
 async def train_model_endpoint(request: TrainRequest):
     train_model(request.dataset_path)
     return {"message": "Model training started."}
@@ -38,6 +38,7 @@ if os.path.exists(dotenv_path):
 else:
     print("Warning: .env file not found!")
 
+# REVIEW: I think this is unnecessary, we could directly access DAGSHUB_USERNAME and DAGSHUB_KEY later on (line ca 170)
 os.environ['MLFLOW_TRACKING_USERNAME'] = os.getenv('DAGSHUB_USERNAME')
 os.environ['MLFLOW_TRACKING_PASSWORD'] = os.getenv('DAGSHUB_KEY')
 
@@ -63,22 +64,6 @@ class MLFlowLogger(callbacks.Callback):
                self.best_epoch = epoch
                self.best_run_id = mlflow.active_run().info.run_id
 
-
-    def on_train_end(self, logs=None):
-        if self.best_run_id is None:
-            previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
-
-            previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
-            if previous_best_run is not None and not previous_best_run.empty:
-                previous_best_val_accuracy = previous_best_run.iloc[0]['val_accuracy']
-                if self.best_val_accuracy > previous_best_val_accuracy:
-                    mlflow.log_param('best_epoch', self.best_epoch)
-                    mlflow.log_metric('best_val_accuracy', self.best_val_accuracy)
-                    self.best_run_id = mlflow.active_run().info.run_id
-                    mlflow.log_param('best_run_id', self.best_run_id)
-                    # Save the model again as it's the best so far
-                    self.model.save(MODEL_PATH, save_format='keras')
-
     def on_train_end(self, logs=None):
         # Only log the best validation accuracy if it's better than the current logged value
         if self.best_val_accuracy > mlflow.active_run().data.params.get('best_val_accuracy', 0):
@@ -87,14 +72,9 @@ class MLFlowLogger(callbacks.Callback):
             mlflow.log_param('best_run_id', self.best_run_id)
             print(f'Best Validation Accuracy: {self.best_val_accuracy} at epoch {self.best_epoch} at run {self.best_run_id}')
 
-
 def setup_mlflow_experiment():
-    # TODO: set up later after Yannick created dagshub
-    # DEBUG: Yannik, here you have to add the repository name and give each of us access to the repo via the API
     mlflow.set_tracking_uri('https://dagshub.com/schytze0/deep_leaf.mlflow')
     mlflow.set_experiment('Plant_Classification_Experiment')
-
-   #  mlflow.start_run()
 
     # parameters for logging
     mlflow.log_param('model', 'VGG16')
@@ -110,10 +90,8 @@ def setup_mlflow_experiment():
     mlflow.log_metric('train_accuracy', 0, step=0)
     mlflow.log_metric('val_loss', 0, step=0)
 
-# TODO: Function to load a best model based on 'val_accuracy' from MLFlow's artifact storage to a local directory:
+# Function to load a best model based on 'val_accuracy' from MLFlow's artifact storage to a local directory:
 # STATUS: not tested
-# DEBUG: Erwin - this is a first attempt; to be discussed further;
-# DEBUG: removed 'best_epoch'; we can choose the best model based on 'val_accuracy' and 'run_id' 
 def get_best_model():
     """
     Retrieves the best-of-the-best" model from MLFlow based on validation accuracy.
@@ -139,8 +117,7 @@ def get_best_model():
     # Extract information about the best run
     run_id = best_run.iloc[0]['run_id']
     best_val_accuracy = best_run.iloc[0]['metrics.val_accuracy']
-    # best_epoch = best_run.iloc[0]['best_epoch']  # TODO: do we need this information elsewhere?
-    
+        
     # Adding some comments again for clarity
     print(f"Best run ID: {run_id}")
     print(f"Best validation accuracy: {best_val_accuracy:.4f}")
@@ -178,16 +155,24 @@ def compare_and_update_model():
         return "No models found in MLFlow experiments"
     
     # Define the DagsHub repository and model path
-    dagshub_repo = "schytze0/deep_leaf"
-    dagshub_model_path = "src/main/models"  # TODO: confirm best model file name
+    # both defined in configy.py
+    dagshub_repo = DAGSHUB_REPO 
+    # TODO: confirm best model file name
+    dagshub_model_path = DAGSHUB_MODEL_PATH  
     
     # Get DagsHub credentials from environment variables - already set globally in train.py
+    # REVIEW: Maybe it's easier to directly access DAGSHUB_USERNAME and DAGSHUB_TOKEN from config. Here we just created another variable with the same content that is used here (no modifications), therefore, I would recommend to directly access DAGSHUB_TOKEN from config (for simplicity and security since we would save the token here directly instead of just accessing it). 
+    # My solution would be
+    # username = os.getenv('DAGSHUB_USERNAME')
+    # token = os.getenv('DAGSHUB_KEY')
+
     username = os.environ.get('MLFLOW_TRACKING_USERNAME')
     token = os.environ.get('MLFLOW_TRACKING_PASSWORD')
     
     if not username or not token:
         return "DagsHub credentials not found in environment variables"
     
+    # REVIEW: I would also suggest to directly access DAGSHUB_REPO and DAGSHUB_MODEL_PATH from config.py to simplify the code (no modifications in the variable saved here again)
     # Check if the model exists on DagsHub
     model_exists = check_model_exists(username, token, dagshub_repo, dagshub_model_path)
     
@@ -240,6 +225,7 @@ def check_model_exists(username, token, repo, path):
     contents = response.json()
     # Look for the production model file
     for item in contents:
+        # REVIEW: I'm not sure if I get this. Shouldn't this be in a folder named models?
         if item.get('name') == "plant_disease_model.keras":
             return True
     return False
@@ -440,6 +426,11 @@ def train_model(dataset_path): # modified the function to accept dataset_path nv
 
     # Step 2: Fine-tune the last layers of the base model
     print('Fine-tuning model...', end='\r')
+    tf.keras.backend.clear_session()
+
+    # reinitializing optimizer
+    optimizer = optimizers.Adam(learning_rate=1e-4, amsgrad=True)
+    
     model, _ = build_vgg16_model(
         input_shape, 
         num_classes, 
@@ -449,12 +440,12 @@ def train_model(dataset_path): # modified the function to accept dataset_path nv
     print('Fine-tuning model ended ✅')
 
     model.compile(
-        optimizer=optimizers.Adam(learning_rate=0.0001),
+        optimizer=optimizer,
         loss='categorical_crossentropy',
         metrics=['accuracy']
     )
 
-    print('Training classification head...', end='\r')
+    print('Fine-tuning head...', end='\r')
     history_2 = model.fit(
         train_data, 
         validation_data=val_data, 
@@ -462,7 +453,7 @@ def train_model(dataset_path): # modified the function to accept dataset_path nv
         # steps_per_epoch=steps_per_epoch,
         callbacks=[checkpoint, mlflow_logger]
     )
-    print('Training classification ended ✅')
+    print('Fine-tuning ended ✅')
 
     # saving mlflow loggs
     mlflow.keras.log_model(model, 'model')
@@ -482,7 +473,7 @@ def train_model(dataset_path): # modified the function to accept dataset_path nv
         json.dump(history, f)
         print(f'History saved in {HISTORY_PATH} ✅.')
 
-    print(f'Training completed. Model saved at {MODEL_PATH} ✅')
+    print(f'Training completed. ✅')
     
     
 def update_model_if_better():
