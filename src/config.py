@@ -47,7 +47,7 @@ HISTORY_PATH = os.path.join(LOGS_DIR, f"history_{TIMESTAMP}.json")
 NUM_CLASSES = 38
 
 # Dagshub credits
-DAGSHUB_REPO = "schytze0/deep_leaf"
+DAGSHUB_REPO = "https://dagshub.com/schytze0/deep_leaf.s3"
 MLFLOW_TRACKING_URL = 'https://dagshub.com/schytze0/deep_leaf.mlflow'
 MLFLOW_EXPERIMENT_NAME = 'Plant_Classification_Experiment'
 MODEL_DVC='production_model.keras.dvc'
