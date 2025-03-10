@@ -219,7 +219,7 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
     # REVIEW: Corrected authentification
     # REVIEW: Dagshub needs TOKEN as access_key_id and as secret_access_key (see menu in dagshub)
     # REVIEW: added new function to add or modify remote (error if origin already exists in config)
-    TOKEN = os.gentenv('DAGSHUB_KEY')
+    TOKEN = os.getenv('DAGSHUB_KEY')
 
     add_or_modify_remote_with_auth(dvc_remote, repo_root, DAGSHUB_REPO, TOKEN)
     
