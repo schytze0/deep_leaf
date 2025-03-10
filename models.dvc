@@ -1,6 +1,6 @@
 outs:
-- md5: b00cc2896a53a2d05600d2d508990364.dir
+- md5: 163eee147cf52127625250541b34be44
   size: 129899386
-  nfiles: 1
+
   hash: md5
-  path: models
+  path: plant_disease_model.keras
