@@ -47,10 +47,6 @@ if os.path.exists(dotenv_path):
 else:
     print("Warning: .env file not found!")
 
-# REVIEW: I think this is unnecessary, we could directly access DAGSHUB_USERNAME and DAGSHUB_KEY later on (line ca 170)
-os.environ['MLFLOW_TRACKING_USERNAME'] = os.getenv('DAGSHUB_USERNAME')
-os.environ['MLFLOW_TRACKING_PASSWORD'] = os.getenv('DAGSHUB_KEY')
-
 # Debugging: Print environment variables to verify they're loaded
 dagshub_username = os.getenv('DAGSHUB_USERNAME')
 dagshub_key = os.getenv('DAGSHUB_KEY')
@@ -154,7 +150,6 @@ def setup_mlflow_experiment():
 #########################################################################################
 
 # MAIN FUNCTION FOR TRAINING
-# REVIEW: Adjusted to optional for local running
 def train_model(dataset_path: str = None): 
     '''
     Trains the model in two phases:
