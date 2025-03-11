@@ -11,3 +11,4 @@ mlflow
 fastapi
 uvicorn
 tenacity
+python-multipart

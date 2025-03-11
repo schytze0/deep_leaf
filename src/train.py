@@ -51,6 +51,15 @@ else:
 os.environ['MLFLOW_TRACKING_USERNAME'] = os.getenv('DAGSHUB_USERNAME')
 os.environ['MLFLOW_TRACKING_PASSWORD'] = os.getenv('DAGSHUB_KEY')
 
+# Debugging: Print environment variables to verify they're loaded
+dagshub_username = os.getenv('DAGSHUB_USERNAME')
+dagshub_key = os.getenv('DAGSHUB_KEY')
+
+if not dagshub_username:
+    print("❌ ERROR: DAGSHUB_USERNAME is not set.")
+if not dagshub_key:
+    print("❌ ERROR: DAGSHUB_KEY is not set.")
+
 # ML Flow setup (still needs to be tested)
 class MLFlowLogger(callbacks.Callback):
     def __init__(self):
@@ -146,7 +155,7 @@ def setup_mlflow_experiment():
 
 # MAIN FUNCTION FOR TRAINING
 # REVIEW: Adjusted to optional for local running
-def train_model(dataset_path: str = None): # modified the function to accept dataset_path nvd06
+def train_model(dataset_path: str = None): 
     '''
     Trains the model in two phases:
     1. Train only the classification head (with frozen base layers).
