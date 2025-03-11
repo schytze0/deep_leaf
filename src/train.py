@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import optimizers, callbacks # type: ignore
 import json
-from src.model import build_vgg16_model
+from app.model import build_vgg16_model
 from config import MODEL_PATH, HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES
 import os
 from helpers import load_tfrecord_data
