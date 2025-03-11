@@ -5,8 +5,9 @@ from tensorflow.keras.preprocessing import image
 # from data_loader import load_data
 from config import MODEL_PATH, IMG_SIZE, TEST_PATH
 from helpers import load_tfrecord_data
+from typing import Union 
+import uvicorn 
 from io import BytesIO
-
 
 def load_trained_model():
     '''
@@ -103,4 +104,3 @@ if __name__ == '__main__':
     print('\nPredictions for Test Set:')
     for filename, label in results.items():
         print(f'{filename}: {label}')
-

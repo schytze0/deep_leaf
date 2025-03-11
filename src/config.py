@@ -31,7 +31,7 @@ MODEL_PATH = os.path.join(MODEL_DIR, "plant_disease_model.keras")  # Path for sa
 # Training parameters
 BATCH_SIZE = 32
 IMG_SIZE = (224, 224)
-EPOCHS = 50
+EPOCHS = 13
 
 # Ensure the model directory exists
 if not os.path.exists(MODEL_DIR):
@@ -45,3 +45,9 @@ os.makedirs(LOGS_DIR, exist_ok=True)  # Ensure logs directory exists
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 HISTORY_PATH = os.path.join(LOGS_DIR, f"history_{TIMESTAMP}.json")
 NUM_CLASSES = 38
+
+# Dagshub credits
+DAGSHUB_REPO = "https://dagshub.com/schytze0/deep_leaf.s3"
+MLFLOW_TRACKING_URL = 'https://dagshub.com/schytze0/deep_leaf.mlflow'
+MLFLOW_EXPERIMENT_NAME = 'Plant_Classification_Experiment'
+MODEL_DVC='production_model.keras.dvc'

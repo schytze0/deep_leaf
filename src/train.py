@@ -1,19 +1,40 @@
 import tensorflow as tf
-from tensorflow.keras import optimizers, callbacks # type: ignore
+from tensorflow.keras import optimizers, callbacks  
 import json
-from app.model import build_vgg16_model
-from config import MODEL_PATH, HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES
 import os
-from helpers import load_tfrecord_data
 import mlflow
 import mlflow.keras
 from dotenv import load_dotenv
-
-import shutil
-import requests
+from pydantic import BaseModel
+import subprocess 
 from pathlib import Path
-import git
-import tempfile
+
+# imports from other scripts
+from config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME
+from model import build_vgg16_model
+from helpers import load_tfrecord_data
+from prod_model_select import update_model_if_better
+
+# new class F1-Score
+# F1 score to get better reporting
+class F1Score(tf.keras.metrics.Metric):
+    def __init__(self, name="f1_score", **kwargs):
+        super(F1Score, self).__init__(name=name, **kwargs)
+        self.precision = tf.keras.metrics.Precision()
+        self.recall = tf.keras.metrics.Recall()
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        self.precision.update_state(y_true, y_pred)
+        self.recall.update_state(y_true, y_pred)
+
+    def result(self):
+        precision = self.precision.result()
+        recall = self.recall.result()
+        return 2 * ((precision * recall) / (precision + recall + tf.keras.backend.epsilon()))
+
+    def reset_states(self):
+        self.precision.reset_states()
+        self.recall.reset_states()
 
 # Access dagshub 
 # Load environment variables from .env file
@@ -26,6 +47,10 @@ if os.path.exists(dotenv_path):
 else:
     print("Warning: .env file not found!")
 
+# REVIEW: I think this is unnecessary, we could directly access DAGSHUB_USERNAME and DAGSHUB_KEY later on (line ca 170)
+os.environ['MLFLOW_TRACKING_USERNAME'] = os.getenv('DAGSHUB_USERNAME')
+os.environ['MLFLOW_TRACKING_PASSWORD'] = os.getenv('DAGSHUB_KEY')
+
 # Debugging: Print environment variables to verify they're loaded
 dagshub_username = os.getenv('DAGSHUB_USERNAME')
 dagshub_key = os.getenv('DAGSHUB_KEY')
@@ -35,64 +60,55 @@ if not dagshub_username:
 if not dagshub_key:
     print("❌ ERROR: DAGSHUB_KEY is not set.")
 
-# Set environment variables
-os.environ['MLFLOW_TRACKING_USERNAME'] = dagshub_username or ""
-os.environ['MLFLOW_TRACKING_PASSWORD'] = dagshub_key or ""
-
 # ML Flow setup (still needs to be tested)
 class MLFlowLogger(callbacks.Callback):
     def __init__(self):
         super().__init__()
         self.best_val_accuracy = 0
+        self.final_val_accuracy = 0
+        self.final_val_f1_score = 0
         self.best_epoch = 0
-        self.best_run_id = None
 
     def on_epoch_end(self, epoch, logs=None):
         if logs:
             mlflow.log_metric('train_loss', logs.get('loss'), step=epoch)
             mlflow.log_metric('train_accuracy', logs.get('accuracy'), step=epoch)
+            mlflow.log_metric('train_f1_score', logs.get('f1_score'), step=epoch)
             mlflow.log_metric('val_loss', logs.get('val_loss'), step=epoch)
             mlflow.log_metric('val_accuracy', logs.get('val_accuracy'), step=epoch)
+            mlflow.log_metric('val_f1_score', logs.get('val_f1_score'), step=epoch)
 
             # checking if it is the best epoch based on validation
             val_accuracy = logs.get('val_accuracy')
+            val_f1_score = logs.get('val_f1_score')
+
             if val_accuracy > self.best_val_accuracy:
-               self.best_val_accuracy = val_accuracy
-               self.best_epoch = epoch
-               self.best_run_id = mlflow.active_run().info.run_id
-
-
-    def on_train_end(self, logs=None):
-        if self.best_run_id is None:
-            previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
-
-            previous_best_run = mlflow.search_runs(order_by=['val_accuracy desc']).head(1)
-            if previous_best_run is not None and not previous_best_run.empty:
-                previous_best_val_accuracy = previous_best_run.iloc[0]['val_accuracy']
-                if self.best_val_accuracy > previous_best_val_accuracy:
-                    mlflow.log_param('best_epoch', self.best_epoch)
-                    mlflow.log_metric('best_val_accuracy', self.best_val_accuracy)
-                    self.best_run_id = mlflow.active_run().info.run_id
-                    mlflow.log_param('best_run_id', self.best_run_id)
-                    # Save the model again as it's the best so far
-                    self.model.save(MODEL_PATH, save_format='keras')
+                self.best_val_accuracy = val_accuracy
+                self.best_val_f1_score = val_f1_score
+                self.best_epoch = epoch
+                mlflow.log_metric('best_val_accuracy', self.best_val_accuracy)
+                mlflow.log_metric('best_val_f1_score', self.best_val_f1_score)
+                mlflow.log_metric('best_epoch', self.best_epoch)
+                print(f'Updated best validation accuracy: {round(val_accuracy, 4)} ✅')
 
     def on_train_end(self, logs=None):
-        # Only log the best validation accuracy if it's better than the current logged value
-        if self.best_val_accuracy > mlflow.active_run().data.params.get('best_val_accuracy', 0):
-            mlflow.log_param('best_val_accuracy', self.best_val_accuracy)
-            mlflow.log_param('best_epoch', self.best_epoch)
-            mlflow.log_param('best_run_id', self.best_run_id)
-            print(f'Best Validation Accuracy: {self.best_val_accuracy} at epoch {self.best_epoch} at run {self.best_run_id}')
+        if logs is None:
+            logs = {}
 
+        # Logging of final scores (depending on what to do we might be interested in best value throughout epochs or the final score)
+        self.final_val_accuracy = logs.get("val_accuracy")
+        self.final_val_f1_score = logs.get("val_f1_score")
+
+        mlflow.log_metric('final_val_accuracy', self.final_val_accuracy)
+        mlflow.log_metric('final_val_f1_score', self.final_val_f1_score)
+
+        # print best values
+        print(f'Best Validation Accuracy: {self.best_val_accuracy:.4f}')
+        print(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
 
 def setup_mlflow_experiment():
-    # TODO: set up later after Yannick created dagshub
-    # DEBUG: Yannik, here you have to add the repository name and give each of us access to the repo via the API
-    mlflow.set_tracking_uri('https://dagshub.com/schytze0/deep_leaf.mlflow')
-    mlflow.set_experiment('Plant_Classification_Experiment')
-
-   #  mlflow.start_run()
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
     # parameters for logging
     mlflow.log_param('model', 'VGG16')
@@ -100,261 +116,23 @@ def setup_mlflow_experiment():
     mlflow.log_param('batch_size', BATCH_SIZE)
     mlflow.log_param('num_classes', NUM_CLASSES)
     mlflow.log_param('input_shape', (224, 224, 3))
-    mlflow.log_param('best_run_id', 0)
-    mlflow.log_param('best_epoch', 0)
-    mlflow.log_param('best_val_accuracy', 0)
-    mlflow.log_metric('val_accuracy', 0, step=0)
+
+    # Final metrics
+    mlflow.log_metric('final_val_accuracy', 0)
+    mlflow.log_metric('final_val_f1_score', 0)
+
+    # Best metrics
+    mlflow.log_metric('best_val_accuracy', 0)
+    mlflow.log_metric('best_val_f1_score', 0)
+    mlflow.log_metric('best_epoch', 0)
+    
+    # Epoch metrics
     mlflow.log_metric('train_loss', 0, step=0)
     mlflow.log_metric('train_accuracy', 0, step=0)
+    mlflow.log_metric('train_f1_score', 0, step=0)
+    mlflow.log_metric('val_accuracy', 0, step=0)
     mlflow.log_metric('val_loss', 0, step=0)
-
-# TODO: Function to load a best model based on 'val_accuracy' from MLFlow's artifact storage to a local directory:
-# STATUS: not tested
-# DEBUG: Erwin - this is a first attempt; to be discussed further;
-# DEBUG: removed 'best_epoch'; we can choose the best model based on 'val_accuracy' and 'run_id' 
-def get_best_model():
-    """
-    Retrieves the best-of-the-best" model from MLFlow based on validation accuracy.
-    Each stored model has been stored in MLFlow based on best 'val_accuracy' epoch in train_model().
-    
-    Returns:
-        model_path (str): Path to the best model within MLFlow
-        run_id (str): ID of the best run
-        best_val_accuracy (float): Validation accuracy of the best model in MLFlow experiments
-    """
-    # Set the MLFlow tracking URI --> not set globally
-    mlflow.set_tracking_uri('https://dagshub.com/schytze0/deep_leaf.mlflow')
-    mlflow.set_experiment('Plant_Classification_Experiment')
-    
-    # Search for the best run based on 'validation accuracy'
-    best_run = mlflow.search_runs(order_by = ["metrics.val_accuracy desc"]).head(1)
-    
-    # Provide comments for clarity
-    if best_run.empty:
-        print("No runs found in the experiment")
-        return None, None, None
-    
-    # Extract information about the best run
-    run_id = best_run.iloc[0]['run_id']
-    best_val_accuracy = best_run.iloc[0]['metrics.val_accuracy']
-    # best_epoch = best_run.iloc[0]['best_epoch']  # TODO: do we need this information elsewhere?
-    
-    # Adding some comments again for clarity
-    print(f"Best run ID: {run_id}")
-    print(f"Best validation accuracy: {best_val_accuracy:.4f}")
-
-    # Define the model uri using the 'run_id'
-    model_uri = f"runs:/{run_id}/model"
-    
-    # Download the model to a local path
-    local_model_path = mlflow.artifacts.download_artifacts(artifact_uri = model_uri)
-    
-    # TODO: if instead we need to use the model immediately for inference, further training, etc.
-    # we can instead use the following:
-    # best_model = mlflow.keras.load_model(model_uri)
-    # print("Best model is loaded")
-    # return best_model, best_val_accuracy, run_id
-
-    # Indicate clarity on the model path
-    print(f"Model downloaded to: {local_model_path}")
-    
-    return local_model_path, best_val_accuracy, run_id
-
-def compare_and_update_model():
-    """
-    Compares the best model from MLFlow with the existing model on DagsHub.
-    If the MLFlow model has better performance or if no model exists on DagsHub,
-    updates/creates the model on DagsHub.
-    
-    Returns:
-        str: Message indicating the action taken (created, overwritten, or no change)
-    """
-    # Get the best model from MLFlow
-    best_model_path, best_val_accuracy, run_id = get_best_model()
-    
-    if best_model_path is None:
-        return "No models found in MLFlow experiments"
-    
-    # Define the DagsHub repository and model path
-    dagshub_repo = "schytze0/deep_leaf"
-    dagshub_model_path = "src/main/models"  # TODO: confirm best model file name
-    
-    # Get DagsHub credentials from environment variables - already set globally in train.py
-    username = os.environ.get('MLFLOW_TRACKING_USERNAME')
-    token = os.environ.get('MLFLOW_TRACKING_PASSWORD')
-    
-    if not username or not token:
-        return "DagsHub credentials not found in environment variables"
-    
-    # Check if the model exists on DagsHub
-    model_exists = check_model_exists(username, token, dagshub_repo, dagshub_model_path)
-    
-    if model_exists:
-        # Download the existing model from DagsHub
-        existing_model_path = download_model_from_dagshub(username, token, dagshub_repo, dagshub_model_path)
-        
-        if existing_model_path:
-            # Get the existing model's accuracy from metadata
-            existing_val_accuracy = get_model_accuracy_from_metadata(existing_model_path)
-            print(f"Existing model validation accuracy: {existing_val_accuracy:.4f}")
-            
-            # Compare performances
-            if best_val_accuracy > existing_val_accuracy:
-                # Update the model on DagsHub
-                success = upload_model_to_dagshub(username, token, dagshub_repo, dagshub_model_path, best_model_path, best_val_accuracy)
-                if success:
-                    return f"Model overwritten - New accuracy: {best_val_accuracy:.4f}, Previous: {existing_val_accuracy:.4f}"
-                else:
-                    return f"Failed to upload new model. New accuracy: {best_val_accuracy:.4f}, Previous: {existing_val_accuracy:.4f}"
-            else:
-                return f"No change - Existing model ({existing_val_accuracy:.4f}) is better than new model ({best_val_accuracy:.4f})"
-        else:
-            # Failed to download but the model exists - try uploading anyway
-            success = upload_model_to_dagshub(username, token, dagshub_repo, dagshub_model_path, best_model_path, best_val_accuracy)
-            if success:
-                return f"Model replaced - Could not download existing model. New accuracy: {best_val_accuracy:.4f}"
-            else:
-                return "Failed to upload new model and could not download existing model"
-    else:
-        # Create new model on DagsHub
-        success = upload_model_to_dagshub(username, token, dagshub_repo, dagshub_model_path, best_model_path, best_val_accuracy)
-        if success:
-            return f"New model created with validation accuracy: {best_val_accuracy:.4f}"
-        else:
-            return "Failed to create new model on DagsHub"
-
-def check_model_exists(username, token, repo, path):
-    """
-    Checks if a model exists at the specified path in the DagsHub repository
-    
-    Returns:
-        bool: True if model exists, False otherwise
-    """
-    url = f"https://api.dagshub.com/api/v1/repos/{repo}/contents/{path}"
-    response = requests.get(url, auth=(username, token))
-    
-    if response.status_code != 200:
-        return False
-    contents = response.json()
-    # Look for the production model file
-    for item in contents:
-        if item.get('name') == "plant_disease_model.keras":
-            return True
-    return False
-
-def download_model_from_dagshub(username, token, repo, path):
-    """
-    Downloads a model from DagsHub using the DagsHub API
-    
-    Returns:
-        str: Path to the downloaded model, or None if download failed
-    """
-    # Create a temporary directory to store the downloaded model
-    temp_dir = os.path.join(os.getcwd(), "temp_model")
-    os.makedirs(temp_dir, exist_ok=True)
-    
-    # First, list the files in the directory
-    api_url = f"https://api.dagshub.com/api/v1/repos/{repo}/contents/{path}"
-    response = requests.get(api_url, auth=(username, token))
-    
-    if response.status_code != 200:
-        print(f"Failed to list files in {path}: {response.status_code}")
-        return None
-    
-    # Parse the response to get file information
-    try:
-        files_info = response.json()
-        if not isinstance(files_info, list):
-            files_info = [files_info]  # Handle single file response
-        
-        # Download each file in the directory
-        for file_info in files_info:
-            # Skip directories
-            if file_info.get('type') == 'dir':
-                continue
-                
-            file_name = file_info.get('name')
-            download_url = file_info.get('download_url')
-            if download_url:
-                file_response = requests.get(download_url, auth=(username, token))
-                if file_response.status_code == 200:
-                    with open(os.path.join(temp_dir, file_name), 'wb') as f:
-                        f.write(file_response.content)
-                    print(f"Downloaded: {file_name}")
-                else:
-                    print(f"Failed to download {file_name}: {file_response.status_code}")
-        # Verify that both the model file and metadata exist
-        if "plant_disease_model.keras" in os.listdir(temp_dir):
-            if "metadata.txt" not in os.listdir(temp_dir):
-                with open(os.path.join(temp_dir, 'metadata.txt'), 'w') as f:
-                    f.write('0.0')  # default value
-            return temp_dir
-        else:
-            print("Model file 'plant_disease_model.keras' not found in the downloaded contents")
-            return None
-    except Exception as e:
-        print(f"Error downloading model: {str(e)}")
-        return None
-
-def upload_model_to_dagshub(username, token, repo, path, model_path, val_accuracy):
-    """
-    Uploads a model to DagsHub using Git operations
-    
-    Returns:
-        bool: True if upload succeeded, False otherwise
-    """
-    try:
-        # Create a temporary directory for git operations
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Clone the repository
-            repo_url = f"https://{username}:{token}@github.com/{repo}.git"
-            git_repo = git.Repo.clone_from(repo_url, temp_dir)
-            
-            # Create the target directory if it doesn't exist
-            target_dir = os.path.join(temp_dir, path)
-            os.makedirs(target_dir, exist_ok=True)
-            
-            # Handle if the downloaded best model is a file:
-            if os.path.isfile(model_path):
-                shutil.copy2(model_path, os.path.join(target_dir, "plant_disease_model.keras"))
-            else:
-                # If it's a directory, try to locate the expected model file
-                candidate_file = os.path.join(model_path, "plant_disease_model.keras")
-                if os.path.exists(candidate_file):
-                    shutil.copy2(candidate_file, os.path.join(target_dir, "plant_disease_model.keras"))
-                else:
-                    raise FileNotFoundError("The expected model file 'plant_disease_model.keras' was not found in the best model path.")
-            
-            # Save the validation accuracy as metadata with the model
-            with open(os.path.join(target_dir, "metadata.txt"), "w") as f:
-                f.write(str(val_accuracy))
-            
-            # Commit and push the changes
-            git_repo.git.add(os.path.join(path, '*'))
-            git_repo.git.commit('-m', f'Update model with validation accuracy {val_accuracy:.4f}')
-            git_repo.git.push()
-            
-            print(f"Model successfully uploaded to DagsHub at {repo}/{path}")
-            return True
-            
-    except Exception as e:
-        print(f"Error uploading model: {str(e)}")
-        print("Fallback message: To upload the model manually, please commit the files to your repository.")
-        return False
-
-def get_model_accuracy_from_metadata(model_path):
-    """
-    Extracts the model accuracy from the metadata file
-    
-    Returns:
-        float: The accuracy value, or 0.0 if not found
-    """
-    try:
-        metadata_path = os.path.join(model_path, "metadata.txt")
-        with open(metadata_path, "r") as f:
-            return float(f.read().strip())
-    except (FileNotFoundError, ValueError):
-        return 0.0
+    mlflow.log_metric('val_f1_score', 0, step=0)
 
 
 ################################ production ###########################################
@@ -375,24 +153,31 @@ def get_model_accuracy_from_metadata(model_path):
 #     print("Failed to retrieve the best model")
 #########################################################################################
 
-# Old function adjusted
-def train_model():
+# MAIN FUNCTION FOR TRAINING
+# REVIEW: Adjusted to optional for local running
+def train_model(dataset_path: str = None): 
     '''
     Trains the model in two phases:
     1. Train only the classification head (with frozen base layers).
     2. Fine-tune the top layers of the base model with a smaller learning rate.
     3. Integrates MLflow to track scores (helpful if different training data is used; NOT TESTED YET)
+    
+    Arguments:
+    - dataset_path: ???
+
+    Returns: None   
+    
     '''
-        
+
     # load mlflow
     setup_mlflow_experiment()
     
     # new insertion
     # TODO: Probably this could be part of the api, the path to the training data?
-    train_data, train_records = load_tfrecord_data('data/raw/train_subset1.tfrecord')
+    train_data, train_records = load_tfrecord_data('data/raw/train_subset6.tfrecord')
     print('Training data loaded ✅')
 
-    val_data, val_records = load_tfrecord_data('data/raw/valid_subset1.tfrecord')
+    val_data, val_records = load_tfrecord_data('data/raw/valid_subset6.tfrecord')
     print('Validation data loaded ✅')
 
     input_shape = (224, 224, 3)
@@ -405,73 +190,77 @@ def train_model():
     model.compile(
         optimizer=optimizers.Adam(learning_rate=0.001),
         loss='categorical_crossentropy',
-        metrics=['accuracy']
+        metrics=['accuracy', F1Score(name='f1_score')]
     )
     print('Model built ✅')
-
-    # Callbacks
-    checkpoint = callbacks.ModelCheckpoint(
-        MODEL_PATH, 
-        save_best_only=True, 
-        monitor='val_accuracy', 
-        mode='max'
-    )
 
     # logging in mlflow
     # INFO: Starting MLflow
     mlflow_logger = MLFlowLogger()
     print('MLflow logger started ✅')
 
-    # manually setting steps per epoch
-    # steps_per_epoch = train_records // BATCH_SIZE
-
     print('Training classification head...', end='\r')
     history_1 = model.fit(
         train_data, 
         validation_data=val_data, 
         epochs=int(EPOCHS*0.7), 
-        # steps_per_epoch=steps_per_epoch,
-        callbacks=[checkpoint, mlflow_logger]
+        callbacks=[mlflow_logger]
     )
     print('Training classification ended ✅')
 
-
     # Step 2: Fine-tune the last layers of the base model
-    print('Fine-tuning model...', end='\r')
+    print('Build fine-tuning model...', end='\r')
+    tf.keras.backend.clear_session()
+
+    # reinitializing optimizer
+    optimizer = optimizers.Adam(learning_rate=1e-4, amsgrad=True)
+    
     model, _ = build_vgg16_model(
         input_shape, 
         num_classes, 
         trainable_base=True, 
         fine_tune_layers=4
     )
-    print('Fine-tuning model ended ✅')
+    print('Fine-tuning model built ✅')
 
     model.compile(
-        optimizer=optimizers.Adam(learning_rate=0.0001),
+        optimizer=optimizer,
         loss='categorical_crossentropy',
-        metrics=['accuracy']
+        metrics=['accuracy', F1Score(name='f1_score')]
     )
 
-    print('Training classification head...', end='\r')
+    print('Fine-tuning head...', end='\r')
     history_2 = model.fit(
         train_data, 
         validation_data=val_data, 
         epochs=int(EPOCHS*0.3), 
-        # steps_per_epoch=steps_per_epoch,
-        callbacks=[checkpoint, mlflow_logger]
+        callbacks=[mlflow_logger]
     )
-    print('Training classification ended ✅')
+    print('Fine-tuning ended ✅')
 
     # saving mlflow loggs
     mlflow.keras.log_model(model, 'model')
+    
+    # saving locally for comparison
+    os.makedirs('temp', exist_ok=True)
+    model.save('temp/current_model.keras')
+    print('Current model saved under temp/current_model.keras ✅')
+
+    # write current val_accuracy to current_accuracy.txt
+    with open('temp/current_accuracy.txt', 'w') as f:
+        f.write(str(mlflow_logger.final_val_accuracy))
+    print('Saved current final validation accuracy as temp/current_accuracy.txt ✅.')
+
     mlflow.end_run()
     print('Scores are saved with MLflow ✅.')
 
     # Combine both training histories
     history = {
         'accuracy': history_1.history['accuracy'] + history_2.history['accuracy'],
-        'val_accuracy': history_1.history['val_accuracy'] + history_2.history['val_accuracy'],
+        'f1_score': history_1.history['f1_score'] + history_2.history['f1_score'],
         'loss': history_1.history['loss'] + history_2.history['loss'],
+        'val_accuracy': history_1.history['val_accuracy'] + history_2.history['val_accuracy'],
+        'val_f1_score': history_1.history['val_f1_score'] + history_2.history['val_f1_score'],
         'val_loss': history_1.history['val_loss'] + history_2.history['val_loss']
     }
 
@@ -480,20 +269,23 @@ def train_model():
         json.dump(history, f)
         print(f'History saved in {HISTORY_PATH} ✅.')
 
-    print(f'Training completed. Model saved at {MODEL_PATH} ✅')
-    
-    
-def update_model_if_better():
-    """
-    Function combining functions above to compare and update model if better
-    
-    Returns:
-        str: Result message from the compare_and_update_model function
-    """
-    result = compare_and_update_model()
-    print(f"Model management result: {result}")
-    return result
+    # make git commit for history 
+    # Git commit and push
+    repo_root = Path.cwd()
+    subprocess.run(
+        ['git', 'add', str(HISTORY_PATH)], 
+        cwd=repo_root, 
+        check=True
+    )
+    commit_msg = 'Updated history logs'
+    subprocess.run(
+        ['git', 'commit', '-m', commit_msg], 
+        cwd=repo_root, 
+        check=True
+    )
+    print('Training completed. ✅')
 
 if __name__ == '__main__':
     train_model()
-    update_model_if_better()
+    result = update_model_if_better()
+    print(f'Model management result: {result}')
