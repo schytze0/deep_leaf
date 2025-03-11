@@ -129,3 +129,106 @@ python predict.py --folder path/to/folder.jpg
 python utils.py
 ```
 
+## Running the FastAPI
+
+From within the virtual environment (after you once re-executed requirements to install src), this should work!
+
+```sh
+PYTHONPATH=.:$PYTHONPATH uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+### Curl test
+
+This will test the root endpoint and check if the API is up and running.
+```sh
+curl -X 'GET' \
+  'http://127.0.0.1:8000/' \
+  -H 'accept: application/json'
+```
+
+This will test the /train endpoint where you pass the dataset path for training. You need to replace your_dataset_path with the actual path to your dataset.
+```sh
+curl -X 'POST' \
+  'http://127.0.0.1:8000/train' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "dataset_path": "../data/raw/train_subset1.tfrecord"
+}'
+```
+
+This will test the /predict endpoint where you upload an image file for prediction. Replace your_image_file with the actual path to the image file you want to test.
+```sh
+curl -X 'POST' \
+  'http://127.0.0.1:8000/predict/' \
+  -H 'accept: application/json' \
+  -F 'file=@your_image_file'
+```
+
+# Work on MLflow as docker (just first notes)
+
+- built folder and Dockerfile
+- MLFLOW_TRACKING_URI from Dockerfile written into ENV
+
+
+
+```sh
+docker build -t mlflow-container . # build docker from mlflow/
+
+
+# run the docker
+docker run -p 5001:5001 --name mlflow-container mlflow-container
+```
+
+Airflow DAG
+
+```sh
+from airflow import DAG
+from airflow.providers.docker.operators.docker import DockerOperator
+from datetime import datetime
+
+default_args = {
+    'owner': 'airflow',
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
+
+with DAG(
+    'mlflow_and_training_pipeline',
+    default_args=default_args,
+    schedule_interval='@daily',  # Adjust as needed
+    start_date=datetime(2025, 3, 11),
+    catchup=False
+) as dag:
+
+    # Start MLflow container
+    start_mlflow_container = DockerOperator(
+        task_id='start_mlflow_container',
+        image='mlflow-server:latest',  # Name of the MLflow container
+        container_name='mlflow-server',
+        ports=[5000],
+        environment={
+            'MLFLOW_TRACKING_URI': 'http://mlflow-server:5000',
+            'MLFLOW_EXPERIMENT_NAME': 'your_experiment_name'
+        },
+        auto_remove=True,
+        dag=dag,
+    )
+
+    # Train model (in separate container)
+    train_model_task = DockerOperator(
+        task_id='train_model_task',
+        image='your_training_image:latest',  # Image for your training model container
+        container_name='training-container',
+        environment={
+            'MLFLOW_TRACKING_URL': 'http://mlflow-server:5000',  # Connects to MLflow container
+            'MLFLOW_EXPERIMENT_NAME': 'your_experiment_name',
+            'DATASET_PATH': '/path/to/your/dataset',
+        },
+        volumes=["/path/to/local/data:/data"],  # Ensure datasets are shared if needed
+        auto_remove=True,
+        dag=dag,
+    )
+
+    start_mlflow_container >> train_model_task
+```
