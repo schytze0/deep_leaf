@@ -103,8 +103,8 @@ class MLFlowLogger(callbacks.Callback):
         print(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
 
 def setup_mlflow_experiment():
-    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000"))
-    mlflow.set_experiment(os.getenv("MLFLOW_EXPERIMENT_NAME", "Plant_Classification_Experiment"))
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
     # parameters for logging
     mlflow.log_param('model', 'VGG16')
