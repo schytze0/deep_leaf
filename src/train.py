@@ -1,25 +1,13 @@
 import tensorflow as tf
 from tensorflow.keras import optimizers, callbacks # type: ignore
 import json
-from model import build_vgg16_model
+from app.model import build_vgg16_model
 from config import MODEL_PATH, HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES
 import os
 from helpers import load_tfrecord_data
 import mlflow
 import mlflow.keras
 from dotenv import load_dotenv
-from fastapi import FastAPI  # nvd06
-from pydantic import BaseModel # nvd06
-
-app = FastAPI()  # nvd06
-
-class TrainRequest(BaseModel):  # Added Pydantic model nvd06
-    dataset_path: str
-
-@app.post("/train")  # Created FastAPI endpoint for training nvd06
-async def train_model_endpoint(request: TrainRequest):
-    train_model(request.dataset_path)
-    return {"message": "Model training started."}
 
 import shutil
 import requests
@@ -38,8 +26,18 @@ if os.path.exists(dotenv_path):
 else:
     print("Warning: .env file not found!")
 
-os.environ['MLFLOW_TRACKING_USERNAME'] = os.getenv('DAGSHUB_USERNAME')
-os.environ['MLFLOW_TRACKING_PASSWORD'] = os.getenv('DAGSHUB_KEY')
+# Debugging: Print environment variables to verify they're loaded
+dagshub_username = os.getenv('DAGSHUB_USERNAME')
+dagshub_key = os.getenv('DAGSHUB_KEY')
+
+if not dagshub_username:
+    print("❌ ERROR: DAGSHUB_USERNAME is not set.")
+if not dagshub_key:
+    print("❌ ERROR: DAGSHUB_KEY is not set.")
+
+# Set environment variables
+os.environ['MLFLOW_TRACKING_USERNAME'] = dagshub_username or ""
+os.environ['MLFLOW_TRACKING_PASSWORD'] = dagshub_key or ""
 
 # ML Flow setup (still needs to be tested)
 class MLFlowLogger(callbacks.Callback):
@@ -378,7 +376,7 @@ def get_model_accuracy_from_metadata(model_path):
 #########################################################################################
 
 # Old function adjusted
-def train_model(dataset_path): # modified the function to accept dataset_path nvd06
+def train_model():
     '''
     Trains the model in two phases:
     1. Train only the classification head (with frozen base layers).
