@@ -1,11 +1,10 @@
 import tensorflow as tf
-from tensorflow.keras import optimizers, callbacks # type: ignore
+from tensorflow.keras import optimizers, callbacks  
 import json
 import os
 import mlflow
 import mlflow.keras
 from dotenv import load_dotenv
-from fastapi import FastAPI  
 from pydantic import BaseModel
 import subprocess 
 from pathlib import Path
@@ -16,19 +15,7 @@ from model import build_vgg16_model
 from helpers import load_tfrecord_data
 from prod_model_select import update_model_if_better
 
-# API Configuration
-app = FastAPI()  
-
-class TrainRequest(BaseModel):  # Added Pydantic model 
-    dataset_path: str
-
-@app.post("/train")  # Created FastAPI endpoint for training 
-async def train_model_endpoint(request: TrainRequest):
-    train_model(request.dataset_path)
-    return {"message": "Model training started."}
-
 # new class F1-Score
-
 # F1 score to get better reporting
 class F1Score(tf.keras.metrics.Metric):
     def __init__(self, name="f1_score", **kwargs):
