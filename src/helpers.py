@@ -1,6 +1,8 @@
 import tensorflow as tf
-from config import NUM_CLASSES, BATCH_SIZE, IMG_SIZE
 from tensorflow.keras.applications.vgg16 import preprocess_input
+
+# User imported
+from src.config import NUM_CLASSES, BATCH_SIZE, IMG_SIZE
 
 # including saved train_/val_data.tfrecord
 def _parse_function(proto):

@@ -8,7 +8,7 @@ from pathlib import Path
 import tenacity
 
 # imports from config
-from config import MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME, DAGSHUB_REPO, MODEL_DVC
+from src.config import MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME, DAGSHUB_REPO, MODEL_DVC
 
 # Ensure script runs from this file path (or any of yours)
 # INFO: CLONE_DIR must be saved in your .env file
