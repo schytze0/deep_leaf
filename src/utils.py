@@ -1,7 +1,9 @@
 import json
 import os
 import matplotlib.pyplot as plt
-from config import LOGS_DIR
+
+# User imported
+from src.config import LOGS_DIR
 
 def get_latest_history_file():
     """

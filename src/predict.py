@@ -2,12 +2,12 @@ import os
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing import image
-# from data_loader import load_data
-from config import MODEL_PATH, IMG_SIZE, TEST_PATH
-from helpers import load_tfrecord_data
-from typing import Union 
-import uvicorn 
 from io import BytesIO
+
+# user defined functions and libraries
+# from src.data_loader import load_data # TODO: needs to be written
+from src.config import MODEL_PATH, IMG_SIZE, TEST_PATH
+from src.helpers import load_tfrecord_data
 
 def load_trained_model():
     '''
@@ -16,6 +16,7 @@ def load_trained_model():
     Returns:
     - model: The loaded Keras model.
     '''
+    # TODO: NEEDS UPDATE TO NEW MODEL models/production_model.keras
     return tf.keras.models.load_model(MODEL_PATH)
 
 def get_class_labels():
@@ -27,6 +28,7 @@ def get_class_labels():
     '''
 
     # new data load from .tfrecord
+    # DEBUG: Here should be new import; probably needs new handling
     train_data = load_tfrecord_data('data/raw/train_subset1.tfrecord')
 
     # new approach with dvc-tracking of data
@@ -70,37 +72,13 @@ def predict_single_image(file): # nvd06: changed from image_path to file to fit 
 
     return class_labels[class_index]  # Return class label instead of index
 
-# TODO: We just want to predict single images to make it easier.
-def predict_folder(folder_path):
-    '''
-    Predicts the class for all images in a folder.
-
-    Args:
-    - folder_path (str): Path to the folder containing multiple images.
-
-    Returns:
-    - results (dict): Dictionary mapping image filenames to predicted labels.
-    '''
-    model = load_trained_model()
-    class_labels = get_class_labels()  # Get dynamic class labels
-    results = {}
-
-    # Get all image files
-    image_files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.png'))]
-
-    for img_path in image_files:
-        img_array = preprocess_image(img_path)
-        predictions = model.predict(img_array)
-        class_index = np.argmax(predictions, axis=1)[0]
-        results[os.path.basename(img_path)] = class_labels[class_index]
-
-    return results
-
 if __name__ == '__main__':
     # Run predictions on the test folder by default
     print(f'Running predictions on the test set: {TEST_PATH}')
+    # DEBUG: NEEDS UPDATE TO JUST SINGLE PICTURE
     results = predict_folder(TEST_PATH)
 
     print('\nPredictions for Test Set:')
     for filename, label in results.items():
         print(f'{filename}: {label}')
+

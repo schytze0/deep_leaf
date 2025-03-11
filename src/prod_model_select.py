@@ -8,11 +8,11 @@ from pathlib import Path
 import tenacity
 
 # imports from config
-from config import MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME, DAGSHUB_REPO, MODEL_DVC
+from src.config import MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME, DAGSHUB_REPO, MODEL_DVC
 
 # Ensure script runs from this file path (or any of yours)
-# REVIEW: Saved clone directory into .env, since it is for each of us different
-os.chdir(os.getenv("CLONE_DIR"))  # If main branch clone is elsewhere (e.g., /home/olaf_wauzi/deep_leaf_main), update this path
+# INFO: CLONE_DIR must be saved in your .env file
+os.chdir(os.getenv("CLONE_DIR")) 
 
 def load_environment():
     """
@@ -47,11 +47,11 @@ def get_best_model():
     Returns:
         tuple: (model_path, best_val_accuracy, run_id)
     """
-    # REVIEW: added both strings into config.py for faster change
+    # INFO: MLFLOW_TRACKING_URL and MLFLOW_EXPERIMENT_NAME are saved in config.py
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
     
-    # REVIEW: I think we should compare the last val_accuracy which represents the last value of the fine-tuned model. 
+    # INFO: Since we have two runs (untrained/fine-tuned) we take the last validation accuracy from the fine-tuned model.
     best_run = mlflow.search_runs(order_by=["metrics.final_val_accuracy DESC"]).head(1)
     if best_run.empty:
         print("No runs found in the experiment")
@@ -59,11 +59,11 @@ def get_best_model():
     
     run_id = best_run.iloc[0]['run_id']
     best_val_accuracy = best_run.iloc[0]['metrics.final_val_accuracy']
-    # REVIEW: I changed to final accuracy value since we run two models and i think it should represent the modified model, shouldn't it?
+    
     print(f"Run ID: {run_id}, Validation accuracy: {best_val_accuracy:.4f}")
 
     model_uri = f"runs:/{run_id}/model"
-    # REVIEW: Maybe saving to an ignored temp-folder within the project? (I could try if you agree)
+    
     local_model_path = mlflow.artifacts.download_artifacts(artifact_uri=model_uri)
     print(f"Model downloaded to: {local_model_path}")
     # Debug: List files to confirm structure
@@ -74,9 +74,9 @@ def get_best_model():
 def check_metadata_exists():
     """Check if metadata.txt exists in repo root and get its accuracy."""
     repo_root = Path.cwd()
-    # REVIEW: Changed to save metadata also under models/
+
     metadata_path = repo_root / "models/metadata.txt"
-    # REVIEW: changed to the specific file 
+
     dvc_pointer_path = repo_root / f'models/{MODEL_DVC}'
     
     if metadata_path.exists():
@@ -101,10 +101,10 @@ def dvc_push(repo_root):
     subprocess.run(["dvc", "push"], cwd=repo_root, check=True)
     print("Pushed model to DVC remote ✅")
 
-    # REVIEW: Added git push after dvc push
+    # need of git push after dvc push (change of dvc files)
     subprocess.run(['git', 'push'], cwd=repo_root, check=True)
     print("Pushed dvc changes to git ✅")
-# 
+
 def add_or_modify_remote_with_auth(dvc_remote, repo_root, dagshub_repo, token):
     '''
     Checks if remote is already there or not. 
@@ -223,7 +223,7 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
     Copy the best model file into src/main/models/, create a DVC pointer file (models.dvc) and metadata.txt in the repo root, then commit and push changes.
     """
     repo_root = Path.cwd()
-    # REVIEW: changed to folder models directly, the change via branches is made by git branch checkout.
+    
     target_dir = repo_root / "models"  
     target_dir.mkdir(parents=True, exist_ok=True)
     
@@ -239,20 +239,13 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
     print(f"Copied model to {dest_model_file}")
     
     # Track with DVC
-    # REVIEW: I needed to add str() here
     subprocess.run(["dvc", "add", str(dest_model_file)], cwd=repo_root, check=True)
-    # REVIEW: This part did not work for me, with uncommenting it worked; added MODEL_DVC to config.py
-    # dvc_file = target_dir / MODEL_DVC
-    # target_dvc_file = repo_root / "models.dvc"
-    # shutil.move(dvc_file, target_dvc_file)
-    # print(f"Moved DVC pointer to {target_dvc_file}")
     dvc_file = target_dir / MODEL_DVC
     target_dvc_file = repo_root / MODEL_DVC
     shutil.move(dvc_file, target_dvc_file)
     print(f"Moved DVC pointer to {target_dvc_file}")
     
-    # Update metadata.txt in repo root
-    # REVIEW: Changed location of metadata.txt into models
+    # Update metadata.txt in models (file is component of production model)
     metadata_path = repo_root / "models/metadata.txt"
     with open(metadata_path, "w") as f:
         f.write(str(val_accuracy))
@@ -267,11 +260,6 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
     
     # Configure DVC remote and push with retry
     dvc_remote = "origin"
-    # REVIEW: Added variable from config instead of the string (DAGSHUB_REPO)
-    # REVIEW: corrected dvc add from dagshub (url and endpointurl)
-    # REVIEW: Corrected authentification
-    # REVIEW: Dagshub needs TOKEN as access_key_id and as secret_access_key (see menu in dagshub)
-    # REVIEW: added new function to add or modify remote (error if origin already exists in config)
     TOKEN = os.getenv('DAGSHUB_KEY')
 
     add_or_modify_remote_with_auth(dvc_remote, repo_root, DAGSHUB_REPO, TOKEN)

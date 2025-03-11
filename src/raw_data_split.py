@@ -3,11 +3,13 @@
 
 import os
 import random
-from config import IMG_SIZE, BATCH_SIZE, KAGGLE_USERNAME, KAGGLE_KEY, TRAIN_PATH, VALID_PATH
 import kagglehub
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
+
+# User imported
+from src.config import IMG_SIZE, BATCH_SIZE, KAGGLE_USERNAME, KAGGLE_KEY, TRAIN_PATH, VALID_PATH
 
 # INFO: Loading original train/validation data set from Kaggle
 def setup_kaggle_auth():

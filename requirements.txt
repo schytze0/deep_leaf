@@ -12,3 +12,8 @@ fastapi
 uvicorn
 tenacity
 python-multipart
+setuptools
+-e . # install src/ as package
+pytest
+httpx
+requests

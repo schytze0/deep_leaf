@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
-from app.train import train_model  # Import train_model function from train.py
-from app.predict import predict_single_image  # Import predict_single_image function from predict.py
+from src.train import train_model  # Import train_model function from train.py
+from src.predict import predict_single_image  # Import predict_single_image function from predict.py
 
 app = FastAPI()
 
