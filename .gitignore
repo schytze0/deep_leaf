@@ -20,4 +20,4 @@ temp/
 models/production_model.keras
 
 # python local package
-src.egg-info/
+src.egg-info/*.*
