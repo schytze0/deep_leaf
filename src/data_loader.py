@@ -28,7 +28,7 @@ def read_progress(progress_file):
             return json.load(f)['current_subset']
     return 0
 
-def main():
+def load_data():
     raw_data_dir = os.path.join(PROJECT_ROOT, 'data', 'raw')
     training_data_dir = os.path.join(PROJECT_ROOT, 'data', 'training')
     progress_file = os.path.join(PROJECT_ROOT, 'merge_progress.json')
@@ -50,4 +50,4 @@ def main():
         print("No new subsets to add.")
 
 if __name__ == "__main__":
-    main()
+    load_data()
