@@ -23,6 +23,7 @@ There are some helper files:
 - `architecture.excalidraw`: visualization of (ongoing) workflow
 - `merge_progress.json`: A file to check how far we have been so far with the new data simulation 
 
+```plaintext
 .
 ├── LICENSE
 ├── README.md
@@ -80,7 +81,7 @@ There are some helper files:
 └── tests
     ├── api_server.py
     └── mlflow_server.py
-
+```
 
 ## 📈 Data
 The original data stems from [Kaggle (New Plant Diseases Dataset)](https://www.kaggle.com/datasets/vipoooool/new-plant-diseases-dataset). Before the project, we downloaded the data set once, and created 10 subsets of training and validation (script `src/raw_data_split.py`), saving the subsets as `.tfrecord` for versioning and then used this 10 subsets as fictional new data income. Therefore, we will add incrementally to the first data set, the other splits to simulate new data incoming. 
