@@ -7,20 +7,16 @@ from dotenv import load_dotenv
 from pathlib import Path
 import tenacity
 
-# imports from config
-from src.config import MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME, DAGSHUB_REPO, MODEL_DVC
-
-# Ensure script runs from this file path (or any of yours)
-# INFO: CLONE_DIR must be saved in your .env file
-os.chdir(os.getenv("CLONE_DIR")) 
+# local imports
+from src.config import MODEL_DVC, DAGSHUB_REPO
 
 def load_environment():
     """
-    Load environment variables from .env file
+    Loads MLflow settings from .env file
     
     Returns:
-    - username: DAGSHUB_USERNAME from .env
-    - token: DAGSHUB_TOKEN from .env
+    - mlflow_url: URL of mlflow container 
+    - experiment_name: experiment name
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     dotenv_path = os.path.join(script_dir, "..", ".env")
@@ -29,30 +25,47 @@ def load_environment():
         load_dotenv(dotenv_path, override=True)
         print('.env file found and loaded ✅')
     else:
-        raise FileNotFoundError("Warning: .env file not found!")
+        raise FileNotFoundError("⛔️ Warning: .env file not found!")
     
-    username = os.getenv('DAGSHUB_USERNAME')
-    token = os.getenv('DAGSHUB_KEY')
+    mlflow_url = os.getenv('MLFLOW_TRACKING_URI')
+    experiment_name = os.getenv('MLFLOW_EXPERIMENT_NAME')
+    
+    if not mlflow_url or not experiment_name:
+        raise ValueError(
+            "MLFLOW_TRACKING_URI or MLFLOW_EXPERIMENT_NAME not set in .env"
+        )
+    
+    print(f'Loaded credentials:\n- URI: {mlflow_url}\n- Experiment name: {experiment_name}')
+    
+    username = os.getenv("DAGSHUB_USER")
+    token = os.getenv("DAGSHUB_TOKEN")
     
     if not username or not token:
-        raise ValueError("DAGSHUB_USERNAME or DAGSHUB_KEY not set in .env")
+        raise ValueError(
+            "DAGSHUB_USER or DAGSHUB_TOKEN not set in .env"
+        )
     
-    print(f"Loaded credentials - Username: {username}")
-    return username, token
+    print(f'Loaded credentials: - username: {username}')
 
-def get_best_model():
+    return mlflow_url, experiment_name, username, token
+
+def get_best_model(mlflow_url, experiment_name):
     """
     Retrieves the best model from MLFlow based on validation accuracy.
-    
+
+    Arguments:
+        - mlflow_uri: loaded MLflow URI from environment (str)
+        - experiment_name: loaded experiment name from environment (str)
     Returns:
         tuple: (model_path, best_val_accuracy, run_id)
     """
-    # INFO: MLFLOW_TRACKING_URL and MLFLOW_EXPERIMENT_NAME are saved in config.py
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
-    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+
+    mlflow.set_tracking_uri(mlflow_url)
+    mlflow.set_experiment(experiment_name)
     
-    # INFO: Since we have two runs (untrained/fine-tuned) we take the last validation accuracy from the fine-tuned model.
-    best_run = mlflow.search_runs(order_by=["metrics.final_val_accuracy DESC"]).head(1)
+    best_run = mlflow.search_runs(
+        order_by=["metrics.final_val_accuracy DESC"]
+    ).head(1)
     if best_run.empty:
         print("No runs found in the experiment")
         return None, None, None
@@ -64,7 +77,9 @@ def get_best_model():
 
     model_uri = f"runs:/{run_id}/model"
     
-    local_model_path = mlflow.artifacts.download_artifacts(artifact_uri=model_uri)
+    local_model_path = mlflow.artifacts.download_artifacts(
+        artifact_uri=model_uri
+    )
     print(f"Model downloaded to: {local_model_path}")
     # Debug: List files to confirm structure
     artifact_files = list(Path(local_model_path).rglob("*"))
@@ -218,7 +233,7 @@ def add_or_modify_remote_with_auth(dvc_remote, repo_root, dagshub_repo, token):
     except subprocess.CalledProcessError as e:
         print(f'Error during remote configuration: {e}')
 
-def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, branch="main"): 
+def upload_model_to_dagshub(model_artifact_path, val_accuracy, branch="main"): 
     """
     Copy the best model file into src/main/models/, create a DVC pointer file (models.dvc) and metadata.txt in the repo root, then commit and push changes.
     """
@@ -272,7 +287,7 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
     
     return True
 
-def manual_upload_instructions(username, model_path, val_accuracy):
+def manual_upload_instructions(model_path, val_accuracy):
     print("\n=== MANUAL UPLOAD INSTRUCTIONS ===")
     print(f"1. Locate model.keras in: {model_path}/data")
     print("2. Rename to 'plant_disease_model.keras' and move to 'models/'")  # If main branch uses src/models/, update to 'src/models/'.
@@ -284,14 +299,19 @@ def manual_upload_instructions(username, model_path, val_accuracy):
     print("===============================\n")
 
 def update_model_if_better():
-    username, token = load_environment()
-    best_model_path, best_val_accuracy, run_id = get_best_model()
+    try:
+        mlflow_url, experiment_name, username, token = load_environment()
+    except ValueError as e:
+        return str(e)
+        
+    best_model_path, best_val_accuracy, run_id = get_best_model(mlflow_url, experiment_name)
     
     if not best_model_path:
         return "No models found in MLFlow experiments"
     
     exists, existing_accuracy = check_metadata_exists()
     action = "No change"
+    
     
     if not exists or best_val_accuracy > existing_accuracy:
         action = "Created" if not exists else "Updated"
