@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 
 # imports from other scripts
-from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME
+from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES
 from src.model import build_vgg16_model
 from src.helpers import load_tfrecord_data
 from src.prod_model_select import update_model_if_better
@@ -103,8 +103,12 @@ class MLFlowLogger(callbacks.Callback):
         print(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
 
 def setup_mlflow_experiment():
-    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000"))
-    mlflow.set_experiment(os.getenv("MLFLOW_EXPERIMENT_NAME", "Plant_Classification_Experiment"))
+    mlflow.set_tracking_uri(
+        os.getenv('MLFLOW_TRACKING_URI','http://mlflow:5001')
+    )
+    mlflow.set_experiment(
+        os.getenv('MLFLOW_EXPERIMENT_NAME', 'Plant_Classification_Experiment')
+    )
 
     # parameters for logging
     mlflow.log_param('model', 'VGG16')
@@ -169,10 +173,14 @@ def train_model(dataset_path: str = None):
     
     # new insertion
     # TODO: Probably this could be part of the api, the path to the training data?
-    train_data, train_records = load_tfrecord_data('data/raw/train_subset6.tfrecord')
+    train_data, train_records = load_tfrecord_data(
+        'data/raw/train_subset6.tfrecord'
+    )
     print('Training data loaded ✅')
 
-    val_data, val_records = load_tfrecord_data('data/raw/valid_subset6.tfrecord')
+    val_data, val_records = load_tfrecord_data(
+        'data/raw/valid_subset6.tfrecord'
+    )
     print('Validation data loaded ✅')
 
     input_shape = (224, 224, 3)
