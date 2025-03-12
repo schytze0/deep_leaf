@@ -70,9 +70,8 @@ There are some helper files:
 │   ├── prod_model_select_mlflow_dagshub.py (old version for MLflow on dagshub)
 │   ├── raw_data_split.py
 │   ├── test_config.py
-│   ├── train-mlflow-dagshub.py
-│   ├── train.py
 │   ├── train_mlflow_dagshub.py (old version for MLflow on dagshub)
+│   ├── train.py
 │   ├── trials.py
 │   └── utils.py
 ├── temp
