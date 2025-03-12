@@ -21,6 +21,7 @@ In `tests/`, you can find simple test scripts for the unit tests.
 There are some helper files:
 - `setup.py`: for creation of the package `src` to reference them in `app/`
 - `architecture.excalidraw`: visualization of (ongoing) workflow
+- `merge_progress.json`: A file to check how far we have been so far with the new data simulation 
 
 .
 ├── LICENSE
@@ -45,6 +46,7 @@ There are some helper files:
 │   ├── history_20250213_084609.json
 │   ├── ...
 │   └── history_20250310_201801.json
+├── merge_progress.json
 ├── mlflow
 │   ├── mlflow_data/
 │   ├── mlflow_db/
@@ -59,14 +61,17 @@ There are some helper files:
 ├── src
 │   ├── __init__.py
 │   ├── config.py
+│   ├── data_loader.py
 │   ├── helpers.py
 │   ├── model.py
 │   ├── predict.py
 │   ├── prod_model_select.py
+│   ├── prod_model_select_mlflow_dagshub.py (old version for MLflow on dagshub)
 │   ├── raw_data_split.py
 │   ├── test_config.py
 │   ├── train-mlflow-dagshub.py
 │   ├── train.py
+│   ├── train_mlflow_dagshub.py (old version for MLflow on dagshub)
 │   ├── trials.py
 │   └── utils.py
 ├── temp
