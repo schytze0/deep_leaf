@@ -14,6 +14,7 @@ from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES
 from src.model import build_vgg16_model
 from src.helpers import load_tfrecord_data
 from src.prod_model_select import update_model_if_better
+from src.data_loader import load_data
 
 # new class F1-Score
 # F1 score to get better reporting
@@ -134,25 +135,6 @@ def setup_mlflow_experiment():
     mlflow.log_metric('val_loss', 0, step=0)
     mlflow.log_metric('val_f1_score', 0, step=0)
 
-
-################################ production ###########################################
-# TODO: Erwin - for production we can use this code to load the best model retreived by get_best_model()
-#
-# # Get the best model
-# model_path, run_id, accuracy = get_best_model() 
-# if model_path:
-#    # Load the model
-#    best_model = mlflow.keras.load_model(model_path)
-#    
-#    # Copy the model to the production repository or deployment location
-#    production_path = "/path/to/production/model"  # path to be defined
-#   # Use appropriate methods for model transfer: shutil.copy, git operations, etc.
-#    
-#    print(f"Best model (accuracy: {accuracy:.4f}) deployed to production")
-# else:
-#     print("Failed to retrieve the best model")
-#########################################################################################
-
 # MAIN FUNCTION FOR TRAINING
 def train_model(dataset_path: str = None): 
     '''
@@ -172,14 +154,13 @@ def train_model(dataset_path: str = None):
     setup_mlflow_experiment()
     
     # new insertion
-    # TODO: Probably this could be part of the api, the path to the training data?
     train_data, train_records = load_tfrecord_data(
-        'data/raw/train_subset6.tfrecord'
+        'data/training/train.tfrecord'
     )
     print('Training data loaded ✅')
 
     val_data, val_records = load_tfrecord_data(
-        'data/raw/valid_subset6.tfrecord'
+        'data/training/valid.tfrecord'
     )
     print('Validation data loaded ✅')
 
@@ -289,6 +270,8 @@ def train_model(dataset_path: str = None):
     print('Training completed. ✅')
 
 if __name__ == '__main__':
+    # REVIEW: I added here the data_loader()
+    load_data()
     train_model()
     result = update_model_if_better()
     print(f'Model management result: {result}')
