@@ -11,6 +11,13 @@ services:
     volumes:
       - ./mlflow/mlflow_data:/app/mlruns  
       - ./mlflow/mlflow_db:/app/mlflow.db  
+    environment:
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
+      - MLFLOW_EXPERIMENT_NAME=${MLFLOW_EXPERIMENT_NAME}
+      - DAGSHUB_USER=${DAGSHUB_USER}
+      - DAGSHUB_TOKEN=${DAGSHUB_TOKEN}
+      - DVC_ACCESS_KEY_ID=${DAGSHUB_TOKEN}
+      - DVC_SECRET_ACCESS_KEY=${DAGSHUB_TOKEN}
     networks:
       - ml_network
 
