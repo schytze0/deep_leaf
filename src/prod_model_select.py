@@ -49,6 +49,24 @@ def load_environment():
 
     return mlflow_url, experiment_name, username, token
 
+################################ production ###########################################
+# TODO: Erwin - for production we can use this code to load the best model retreived by get_best_model()
+#
+# # Get the best model
+# model_path, run_id, accuracy = get_best_model() 
+# if model_path:
+#    # Load the model
+#    best_model = mlflow.keras.load_model(model_path)
+#    
+#    # Copy the model to the production repository or deployment location
+#    production_path = "/path/to/production/model"  # path to be defined
+#   # Use appropriate methods for model transfer: shutil.copy, git operations, etc.
+#    
+#    print(f"Best model (accuracy: {accuracy:.4f}) deployed to production")
+# else:
+#     print("Failed to retrieve the best model")
+#########################################################################################
+
 def get_best_model(mlflow_url, experiment_name):
     """
     Retrieves the best model from MLFlow based on validation accuracy.
