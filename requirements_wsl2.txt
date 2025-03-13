@@ -29,3 +29,8 @@ plotly
 python-dotenv
 pathlib
 dvc
+setuptools
+-e . # install src/ as package
+pytest
+httpx
+requests

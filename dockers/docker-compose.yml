@@ -31,6 +31,7 @@ services:
   #     - train
   #   environment:
   #     - MLFLOW_TRACKING_URI=http://mlflow:5001
+  #     - MLFLOW_EXPERIMENT_NAME=${MLFLOW_EXPERIMENT_NAME}
   #   networks:
   #     - ml_network
 
@@ -41,6 +42,7 @@ services:
     #   - mlflow
     # environment:
     #   - MLFLOW_TRACKING_URI=http://mlflow:5001
+    #   - MLFLOW_EXPERIMENT_NAME=${MLFLOW_EXPERIMENT_NAME}
     # networks:
     #   - ml_network
 
