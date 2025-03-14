@@ -87,7 +87,7 @@ The original data stems from [Kaggle (New Plant Diseases Dataset)](https://www.k
 
 ## 🧑‍💻 Project Diagram
 
-![Projekt worklfow implémentation](architecture.excalidraw.png)
+![Projekt worklfow implementation](architecture.excalidraw.png)
 
 ## Application Operation
 

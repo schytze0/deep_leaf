@@ -44,12 +44,12 @@ def preprocess_image(file): # nvd06: changed from image_path to file to fit the 
     Loads and preprocesses a single image for model prediction.
 
     Args:
-    - img_path (str): Path to the image.
+    - file (str): Path to the image.
 
     Returns:
     - img_array: Preprocessed image array.
     '''
-    img = image.load_img(BytesIO(file.file.read()), target_size=IMG_SIZE) # added the BytesIO part nvd06
+    img = image.load_img(BytesIO(file.file.read()), target_size=IMG_SIZE) # added the BytesIO part for file handling nvd06
     img_array = image.img_to_array(img) / 255.0  # Normalize pixel values
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     return img_array
@@ -59,7 +59,7 @@ def predict_single_image(file): # nvd06: changed from image_path to file to fit 
     Predicts the class of a single image.
 
     Args:
-    - img_path (str): Path to the image.
+    - file (str): Path to the image.
 
     Returns:
     - Predicted class label.
@@ -81,4 +81,3 @@ if __name__ == '__main__':
     print('\nPredictions for Test Set:')
     for filename, label in results.items():
         print(f'{filename}: {label}')
-
