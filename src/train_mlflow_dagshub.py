@@ -63,22 +63,26 @@ class F1Score(tf.keras.metrics.Metric):
 
 # ML Flow setup (still needs to be tested)
 class MLFlowLogger(callbacks.Callback):
-    def __init__(self):
+    def __init__(self, run_id=None):
         super().__init__()
+        self.run_id = run_id  # save the runID
         self.best_val_accuracy = 0
         self.final_val_accuracy = 0
         self.final_val_f1_score = 0
         self.best_epoch = 0
 
     def on_epoch_end(self, epoch, logs=None):
-        if logs:
+        if not logs:
+            print("Warning: logs object is empty in on_epoch_end")
+            return
+        try:
             mlflow.log_metric('train_loss', logs.get('loss'), step=epoch)
             mlflow.log_metric('train_accuracy', logs.get('accuracy'), step=epoch)
             mlflow.log_metric('train_f1_score', logs.get('f1_score'), step=epoch)
             mlflow.log_metric('val_loss', logs.get('val_loss'), step=epoch)
             mlflow.log_metric('val_accuracy', logs.get('val_accuracy'), step=epoch)
             mlflow.log_metric('val_f1_score', logs.get('val_f1_score'), step=epoch)
-
+        
             # checking if it is the best epoch based on validation
             val_accuracy = logs.get('val_accuracy')
             val_f1_score = logs.get('val_f1_score')
@@ -91,65 +95,70 @@ class MLFlowLogger(callbacks.Callback):
                 mlflow.log_metric('best_val_f1_score', self.best_val_f1_score)
                 mlflow.log_metric('best_epoch', self.best_epoch)
                 print(f'Updated best validation accuracy: {round(val_accuracy, 4)} ✅')
+        except Exception as e:
+            print(f"MLflow logging error: {e}")
 
     def on_train_end(self, logs=None):
         if logs is None:
             logs = {}
+            
+        try:
 
-        # Logging of final scores (depending on what to do we might be interested in best value throughout epochs or the final score)
-        self.final_val_accuracy = logs.get("val_accuracy")
-        self.final_val_f1_score = logs.get("val_f1_score")
+            # Logging of final scores (depending on what to do we might be interested in best value throughout epochs or the final score)
+            self.final_val_accuracy = logs.get("val_accuracy")
+            self.final_val_f1_score = logs.get("val_f1_score")
 
-        mlflow.log_metric('final_val_accuracy', self.final_val_accuracy)
-        mlflow.log_metric('final_val_f1_score', self.final_val_f1_score)
+            mlflow.log_metric('final_val_accuracy', self.final_val_accuracy)
+            mlflow.log_metric('final_val_f1_score', self.final_val_f1_score)
 
-        # print best values
-        print(f'Best Validation Accuracy: {self.best_val_accuracy:.4f}')
-        print(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
+            # print best values
+            print(f'Best Validation Accuracy: {self.best_val_accuracy:.4f}')
+            print(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
+            
+        except Exception as e:
+            print(f"MLflow logging error in on_train_end: {e}")
 
 def setup_mlflow_experiment():
     ###################### Change 2: Configure MLflow with Dockerized server and DagsHub ##########
-    # Using ML Flow in the separate container:
-    mlflow_tracking_uri = (MLFLOW_TRACKING_URL)  # ML Flow container hostname
     ###############################################################################################
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
-    
     ###################### add debug message #####################
-    print(f"MLflow tracking URI set to: {mlflow_tracking_uri}")
+    print(f"MLflow tracking URI set to: {MLFLOW_TRACKING_URL}")
     ##############################################################
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
-    
     ###################### add debug message #####################
     print(f"MLflow experiment set to: {MLFLOW_EXPERIMENT_NAME}")
     ##############################################################
 
+    ###### moved metrics to 'train_model' as I'm getting errors of empty runs ######
     # parameters for logging
-    mlflow.log_param('model', 'VGG16')
-    mlflow.log_param('epochs', EPOCHS)
-    mlflow.log_param('batch_size', BATCH_SIZE)
-    mlflow.log_param('num_classes', NUM_CLASSES)
-    mlflow.log_param('input_shape', (224, 224, 3))
+    ## mlflow.log_param('model', 'VGG16')
+    ## mlflow.log_param('epochs', EPOCHS)
+    ## mlflow.log_param('batch_size', BATCH_SIZE)
+    ## mlflow.log_param('num_classes', NUM_CLASSES)
+    ## mlflow.log_param('input_shape', str((224, 224, 3)))
 
+    #### do we need the baseline for the metrics? These values are overwritten by the MLflow Logger ####
     # Final metrics
-    mlflow.log_metric('final_val_accuracy', 0)
-    mlflow.log_metric('final_val_f1_score', 0)
+    ## mlflow.log_metric('final_val_accuracy', 0)
+    ## mlflow.log_metric('final_val_f1_score', 0)
 
     # Best metrics
-    mlflow.log_metric('best_val_accuracy', 0)
-    mlflow.log_metric('best_val_f1_score', 0)
-    mlflow.log_metric('best_epoch', 0)
+    ## mlflow.log_metric('best_val_accuracy', 0)
+    ## mlflow.log_metric('best_val_f1_score', 0)
+    ## mlflow.log_metric('best_epoch', 0)
     
     # Epoch metrics
-    mlflow.log_metric('train_loss', 0, step=0)
-    mlflow.log_metric('train_accuracy', 0, step=0)
-    mlflow.log_metric('train_f1_score', 0, step=0)
-    mlflow.log_metric('val_accuracy', 0, step=0)
-    mlflow.log_metric('val_loss', 0, step=0)
-    mlflow.log_metric('val_f1_score', 0, step=0)
+    ## mlflow.log_metric('train_loss', 0, step=0)
+    ## mlflow.log_metric('train_accuracy', 0, step=0)
+    ## mlflow.log_metric('train_f1_score', 0, step=0)
+    ## mlflow.log_metric('val_accuracy', 0, step=0)
+    ## mlflow.log_metric('val_loss', 0, step=0)
+    ## mlflow.log_metric('val_f1_score', 0, step=0)
 
 
 # MAIN FUNCTION FOR TRAINING
-def train_model(dataset_path: str = None): 
+def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
     '''
     Trains the model in two phases:
     1. Train only the classification head (with frozen base layers).
@@ -163,13 +172,48 @@ def train_model(dataset_path: str = None):
     
     '''
     ############################## Change 3: explicitly start ML Flow run ########################
-    with mlflow.start_run():
-        # load mlflow
-        setup_mlflow_experiment()
+    
+    # Ensure tracking URI is correctly set before doing anything else
+    if mlflow.get_tracking_uri() != MLFLOW_TRACKING_URL:
+        print(f"Warning: MLflow tracking URI mismatch. Resetting to {MLFLOW_TRACKING_URL}")
+        mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
+    
+    # Add a basic connectivity check for MLflow server --> debug
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Extract hostname from MLFLOW_TRACKING_URL
+        from urllib.parse import urlparse
+        hostname = urlparse(MLFLOW_TRACKING_URL).hostname
+        port = urlparse(MLFLOW_TRACKING_URL).port or 5000
+        s.connect((hostname, port))
+        s.close()
+        print(f"MLflow server at {hostname}:{port} is reachable ✅")
+    except Exception as e:
+        print(f"WARNING: Cannot connect to MLflow server: {e}")
+        print(f"MLflow tracking may not work correctly.")
+    ########################################################################
+    
+    mlflow_uri = mlflow.get_tracking_uri()  # debug
+    print(f"Active MLflow tracking URI: {mlflow_uri}")  # debug
+    
+    # setup mlflow experiment
+    setup_mlflow_experiment()
+    
+    with mlflow.start_run() as run:
+        run_id = run.info.run_id  # debug
+        print(f"Started MLflow run with ID: {run_id}")  # debug
+        # parameters for logging --> moved from setup_mlflow_experiment()
+        mlflow.log_param('model', 'VGG16')
+        mlflow.log_param('epochs', EPOCHS)
+        mlflow.log_param('batch_size', BATCH_SIZE)
+        mlflow.log_param('num_classes', NUM_CLASSES)
+        mlflow.log_param('input_shape', str((224, 224, 3)))
+        print("Parameters logged successfully")  # debug
     
         # new insertion
         # TODO: Probably this could be part of the api, the path to the training data?
-        train_data, train_records = load_tfrecord_data('data/raw/train_subset6.tfrecord')
+        train_data, train_records = load_tfrecord_data(dataset_path)
         print('Training data loaded ✅')
 
         val_data, val_records = load_tfrecord_data('data/raw/valid_subset6.tfrecord')
@@ -193,6 +237,15 @@ def train_model(dataset_path: str = None):
         # INFO: Starting MLflow
         mlflow_logger = MLFlowLogger()
         print('MLflow logger started ✅')
+        
+        ####################### debug before model fit1 ################
+        print("Testing MLflow logging before model.fit1...")
+        try:
+            mlflow.log_param("test_before_training", "value")
+            print("MLflow logging before training successful ✅")
+        except Exception as e:
+            print(f"MLflow logging before training failed: {e}")
+        ##############################################
 
         print('Training classification head...', end='\r')
         history_1 = model.fit(
@@ -201,10 +254,21 @@ def train_model(dataset_path: str = None):
             epochs=int(EPOCHS*0.7), 
             callbacks=[mlflow_logger]
         )
+        
+        ####################### debug after model fit1 ################
+        print("Testing MLflow logging after model.fit1...")
+        try:
+            mlflow.log_param("test_after_training", "value")
+            print("MLflow logging after training successful ✅")
+        except Exception as e:
+            print(f"MLflow logging after training failed: {e}")
+        ##############################################
+        
         print('Training classification ended ✅')
 
          # Step 2: Fine-tune the last layers of the base model
         print('Build fine-tuning model...', end='\r')
+        
         tf.keras.backend.clear_session()
 
         # reinitializing optimizer
@@ -216,13 +280,23 @@ def train_model(dataset_path: str = None):
             trainable_base=True, 
             fine_tune_layers=4
         )
-        print('Fine-tuning model built ✅')
 
         model.compile(
             optimizer=optimizer,
             loss='categorical_crossentropy',
             metrics=['accuracy', F1Score(name='f1_score')]
         )
+
+        print('Fine-tuning model built ✅')
+
+        ####################### debug before model fit2 ################
+        print("Testing MLflow logging before model.fit2...")
+        try:
+            mlflow.log_param("test_before_training", "value")
+            print("MLflow logging before training successful ✅")
+        except Exception as e:
+            print(f"MLflow logging before training failed: {e}")
+        ##############################################
 
         print('Fine-tuning head...', end='\r')
         history_2 = model.fit(
@@ -231,6 +305,16 @@ def train_model(dataset_path: str = None):
             epochs=int(EPOCHS*0.3), 
             callbacks=[mlflow_logger]
         )
+        
+        ####################### debug after model fit2 ################
+        print("Testing MLflow logging after model.fit2...")
+        try:
+            mlflow.log_param("test_after_training", "value")
+            print("MLflow logging after training successful ✅")
+        except Exception as e:
+            print(f"MLflow logging after training failed: {e}")
+        ##############################################
+        
         print('Fine-tuning ended ✅')
 
         ################################ Change 4: Log model to ML Flow with DagsHub registry #######
@@ -287,5 +371,5 @@ def train_model(dataset_path: str = None):
 
 if __name__ == '__main__':
     train_model()
-    result = update_model_if_better()
-    print(f'Model management result: {result}')
+    # result = update_model_if_better()
+    # print(f'Model management result: {result}')
