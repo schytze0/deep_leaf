@@ -15,6 +15,10 @@ GITHUB_ACTOR = os.getenv("GITHUB_ACTOR", "default_user").upper()  # Detect GitHu
 KAGGLE_USERNAME = os.getenv(f"KAGGLE_USERNAME_{GITHUB_ACTOR}")
 KAGGLE_KEY = os.getenv(f"KAGGLE_KEY_{GITHUB_ACTOR}") or os.getenv("KAGGLE_KEY", "")
 
+## ADDING: DagsHub credentials
+DAGSHUB_USERNAME = os.getenv("DAGSHUB_USERNAME", "default_user")
+DAGSHUB_KEY = os.getenv("DAGSHUB_KEY", "default_token")
+
 # Define a dataset storage directory inside the user's home
 HOME_DIR = os.path.expanduser("~")  
 ROOT_DIR = os.path.abspath("./")
@@ -47,7 +51,11 @@ HISTORY_PATH = os.path.join(LOGS_DIR, f"history_{TIMESTAMP}.json")
 NUM_CLASSES = 38
 
 # Dagshub credits
-DAGSHUB_REPO = "https://dagshub.com/schytze0/deep_leaf.s3"
-MLFLOW_TRACKING_URL = 'https://dagshub.com/schytze0/deep_leaf.mlflow'
-MLFLOW_EXPERIMENT_NAME = 'Plant_Classification_Experiment'
+DAGSHUB_REPO = os.getenv("DAGSHUB_REPO", "https://dagshub.com/schytze0/deep_leaf")
+## MLFLOW_TRACKING_URL = 'https://dagshub.com/schytze0/deep_leaf.mlflow'
+MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME","Plant_Classification_Experiment")
 MODEL_DVC='production_model.keras.dvc'
+
+###################### Changes added for ML Flow containerization #################
+
+MLFLOW_TRACKING_URL = "http://mlflow:5000"
