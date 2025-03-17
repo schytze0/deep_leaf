@@ -74,15 +74,22 @@ services:
     ports:
       - 5000:5000
     volumes:
-      - ./mlflow/artifacts:/mlflow/artifacts
+      - ./mlflow/artifacts:/app/mlflow/artifacts
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./temp:/app/temp
       - ./.env:/app/.env  # For testing with .env
     depends_on:
       mlflow-postgres:
         condition: service_healthy
     # Later, when running on 'main': uncomment for production without .env
     # environment:
-    #   MLFLOW_TRACKING_USERNAME: "your_dagshub_username"  # to be replaced with actual value
-    #   MLFLOW_TRACKING_PASSWORD: "your_dagshub_token"  # to be replaced with actual value
+    #  - DAGSHUB_USERNAME=${DAGSHUB_USERNAME}
+    #  - DAGSHUB_KEY=${DAGSHUB_KEY}
+    #  - MLFLOW_TRACKING_URL=http://mlflow:5000
+    #  - MLFLOW_EXPERIMENT_NAME=Plant_Classification_Experiment
+    #  - MLFLOW_TRACKING_USERNAME: "your_dagshub_username"  # to be replaced with actual value
+    #  - MLFLOW_TRACKING_PASSWORD: "your_dagshub_token"  # to be replaced with actual value
 
   fastapi-app:
     image: fastapi-app:latest
@@ -95,6 +102,8 @@ services:
       - ./data:/app/data
       - ./models:/app/models
       - ./logs:/app/logs
+      - ./temp:/app/temp
+      - .:/app
       - ./.env:/app/.env  # For testing with .env
     depends_on:
       - mlflow
@@ -102,7 +111,7 @@ services:
     # environment:
     #   - DAGSHUB_USERNAME=your_username  # to be replaced with actual value
     #   - DAGSHUB_KEY=your_token  # to be replaced with actual value
-    #   - DAGSHUB_REPO=https://dagshub.com/schytze0/deep_leaf.s3
+    #   - DAGSHUB_REPO=https://dagshub.com/schytze0/deep_leaf
     #   - MLFLOW_EXPERIMENT_NAME=Plant_Classification_Experiment
 
   airflow-webserver:

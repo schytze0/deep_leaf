@@ -33,3 +33,4 @@ dist/
 
 # logs if they are generated at runtime
 logs/
+mlruns/

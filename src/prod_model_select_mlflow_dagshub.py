@@ -270,19 +270,19 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
         print(f"Error: No model.keras found at {source_model_file}. Available files: {artifact_files}")
         raise FileNotFoundError(f"No model.keras found in {model_artifact_path}/data")
     
-    dest_model_file = target_dir / "production_model.keras"
+    dest_model_file = repo_root / "production_model.keras"
     shutil.copy2(source_model_file, dest_model_file)
     print(f"Copied model to {dest_model_file}")
     
     # Track with DVC
     subprocess.run(["dvc", "add", str(dest_model_file)], cwd=repo_root, check=True)
-    dvc_file = target_dir / MODEL_DVC
+    dvc_file = repo_root / MODEL_DVC
     target_dvc_file = repo_root / MODEL_DVC
     shutil.move(dvc_file, target_dvc_file)
     print(f"Moved DVC pointer to {target_dvc_file}")
     
     # Update metadata.txt in models (file is component of production model)
-    metadata_path = repo_root / "models/metadata.txt"
+    metadata_path = repo_root / "models" / "metadata.txt"
     with open(metadata_path, "w") as f:
         f.write(str(val_accuracy))
     print(f"Updated {metadata_path} with accuracy: {val_accuracy:.4f}")
