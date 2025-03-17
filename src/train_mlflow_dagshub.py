@@ -4,8 +4,6 @@ import json
 import os
 import mlflow
 import mlflow.keras
-from dotenv import load_dotenv
-from pydantic import BaseModel
 import subprocess 
 from pathlib import Path
 
@@ -13,7 +11,7 @@ from pathlib import Path
 from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME
 from src.model import build_vgg16_model
 from src.helpers import load_tfrecord_data
-from src.prod_model_select import update_model_if_better
+from src.prod_model_select_mlflow_dagshub import update_model_if_better
 
 # new class F1-Score
 # F1 score to get better reporting
@@ -36,25 +34,32 @@ class F1Score(tf.keras.metrics.Metric):
         self.precision.reset_states()
         self.recall.reset_states()
 
-# Access dagshub 
-# Load environment variables from .env file
-script_dir = os.path.dirname(os.path.abspath(__file__))
-dotenv_path = os.path.join(script_dir, "..", ".env")
+#################### Changes proposed to run ML Flow in a Docker container ##################
+#################### CHANGE 1: Remove .env loading and use Docker environment variables #####
+### Removed: Loading .env file and manual DagsHub env vars ###
+### Reason: We pass these via docker-compose environment variables ###
 
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path, override=True)
-    print('.env file found and loaded ✅')
-else:
-    print("Warning: .env file not found!")
+## I'll keep the original code commented out for reference; using '##' in the beginning of each line
+## Access dagshub 
+## Load environment variables from .env file
+## script_dir = os.path.dirname(os.path.abspath(__file__))
+## dotenv_path = os.path.join(script_dir, "..", ".env")
 
-# Debugging: Print environment variables to verify they're loaded
-dagshub_username = os.getenv('DAGSHUB_USERNAME')
-dagshub_key = os.getenv('DAGSHUB_KEY')
+## if os.path.exists(dotenv_path):
+##     load_dotenv(dotenv_path, override=True)
+##     print('.env file found and loaded ✅')
+## else:
+##     print("Warning: .env file not found!")
 
-if not dagshub_username:
-    print("❌ ERROR: DAGSHUB_USERNAME is not set.")
-if not dagshub_key:
-    print("❌ ERROR: DAGSHUB_KEY is not set.")
+## Debugging: Print environment variables to verify they're loaded
+## dagshub_username = os.getenv('DAGSHUB_USERNAME')
+## dagshub_key = os.getenv('DAGSHUB_KEY')
+
+## if not dagshub_username:
+##     print("❌ ERROR: DAGSHUB_USERNAME is not set.")
+## if not dagshub_key:
+##     print("❌ ERROR: DAGSHUB_KEY is not set.")
+###################################################################################
 
 # ML Flow setup (still needs to be tested)
 class MLFlowLogger(callbacks.Callback):
@@ -103,8 +108,20 @@ class MLFlowLogger(callbacks.Callback):
         print(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
 
 def setup_mlflow_experiment():
+    ###################### Change 2: Configure MLflow with Dockerized server and DagsHub ##########
+    # Using ML Flow in the separate container:
+    mlflow_tracking_uri = (MLFLOW_TRACKING_URL)  # ML Flow container hostname
+    ###############################################################################################
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
+    
+    ###################### add debug message #####################
+    print(f"MLflow tracking URI set to: {mlflow_tracking_uri}")
+    ##############################################################
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+    
+    ###################### add debug message #####################
+    print(f"MLflow experiment set to: {MLFLOW_EXPERIMENT_NAME}")
+    ##############################################################
 
     # parameters for logging
     mlflow.log_param('model', 'VGG16')
@@ -131,24 +148,6 @@ def setup_mlflow_experiment():
     mlflow.log_metric('val_f1_score', 0, step=0)
 
 
-################################ production ###########################################
-# TODO: Erwin - for production we can use this code to load the best model retreived by get_best_model()
-#
-# # Get the best model
-# model_path, run_id, accuracy = get_best_model() 
-# if model_path:
-#    # Load the model
-#    best_model = mlflow.keras.load_model(model_path)
-#    
-#    # Copy the model to the production repository or deployment location
-#    production_path = "/path/to/production/model"  # path to be defined
-#   # Use appropriate methods for model transfer: shutil.copy, git operations, etc.
-#    
-#    print(f"Best model (accuracy: {accuracy:.4f}) deployed to production")
-# else:
-#     print("Failed to retrieve the best model")
-#########################################################################################
-
 # MAIN FUNCTION FOR TRAINING
 def train_model(dataset_path: str = None): 
     '''
@@ -163,122 +162,128 @@ def train_model(dataset_path: str = None):
     Returns: None   
     
     '''
-
-    # load mlflow
-    setup_mlflow_experiment()
+    ############################## Change 3: explicitly start ML Flow run ########################
+    with mlflow.start_run():
+        # load mlflow
+        setup_mlflow_experiment()
     
-    # new insertion
-    # TODO: Probably this could be part of the api, the path to the training data?
-    train_data, train_records = load_tfrecord_data('data/raw/train_subset6.tfrecord')
-    print('Training data loaded ✅')
+        # new insertion
+        # TODO: Probably this could be part of the api, the path to the training data?
+        train_data, train_records = load_tfrecord_data('data/raw/train_subset6.tfrecord')
+        print('Training data loaded ✅')
 
-    val_data, val_records = load_tfrecord_data('data/raw/valid_subset6.tfrecord')
-    print('Validation data loaded ✅')
+        val_data, val_records = load_tfrecord_data('data/raw/valid_subset6.tfrecord')
+        print('Validation data loaded ✅')
 
-    input_shape = (224, 224, 3)
+        input_shape = (224, 224, 3)
 
-    num_classes = NUM_CLASSES
+        num_classes = NUM_CLASSES
     
-    # Step 1: Train classification head with frozen base model
-    model, _ = build_vgg16_model(input_shape, num_classes, trainable_base=False)
+        # Step 1: Train classification head with frozen base model
+        model, _ = build_vgg16_model(input_shape, num_classes, trainable_base=False)
 
-    model.compile(
-        optimizer=optimizers.Adam(learning_rate=0.001),
-        loss='categorical_crossentropy',
-        metrics=['accuracy', F1Score(name='f1_score')]
-    )
-    print('Model built ✅')
+        model.compile(
+            optimizer=optimizers.Adam(learning_rate=0.001),
+            loss='categorical_crossentropy',
+            metrics=['accuracy', F1Score(name='f1_score')]
+        )
+        print('Model built ✅')
 
-    # logging in mlflow
-    # INFO: Starting MLflow
-    mlflow_logger = MLFlowLogger()
-    print('MLflow logger started ✅')
+        # logging in mlflow
+        # INFO: Starting MLflow
+        mlflow_logger = MLFlowLogger()
+        print('MLflow logger started ✅')
 
-    print('Training classification head...', end='\r')
-    history_1 = model.fit(
-        train_data, 
-        validation_data=val_data, 
-        epochs=int(EPOCHS*0.7), 
-        callbacks=[mlflow_logger]
-    )
-    print('Training classification ended ✅')
+        print('Training classification head...', end='\r')
+        history_1 = model.fit(
+            train_data, 
+            validation_data=val_data, 
+            epochs=int(EPOCHS*0.7), 
+            callbacks=[mlflow_logger]
+        )
+        print('Training classification ended ✅')
 
-    # Step 2: Fine-tune the last layers of the base model
-    print('Build fine-tuning model...', end='\r')
-    tf.keras.backend.clear_session()
+         # Step 2: Fine-tune the last layers of the base model
+        print('Build fine-tuning model...', end='\r')
+        tf.keras.backend.clear_session()
 
-    # reinitializing optimizer
-    optimizer = optimizers.Adam(learning_rate=1e-4, amsgrad=True)
+        # reinitializing optimizer
+        optimizer = optimizers.Adam(learning_rate=1e-4, amsgrad=True)
     
-    model, _ = build_vgg16_model(
-        input_shape, 
-        num_classes, 
-        trainable_base=True, 
-        fine_tune_layers=4
-    )
-    print('Fine-tuning model built ✅')
+        model, _ = build_vgg16_model(
+            input_shape, 
+            num_classes, 
+            trainable_base=True, 
+            fine_tune_layers=4
+        )
+        print('Fine-tuning model built ✅')
 
-    model.compile(
-        optimizer=optimizer,
-        loss='categorical_crossentropy',
-        metrics=['accuracy', F1Score(name='f1_score')]
-    )
+        model.compile(
+            optimizer=optimizer,
+            loss='categorical_crossentropy',
+            metrics=['accuracy', F1Score(name='f1_score')]
+        )
 
-    print('Fine-tuning head...', end='\r')
-    history_2 = model.fit(
-        train_data, 
-        validation_data=val_data, 
-        epochs=int(EPOCHS*0.3), 
-        callbacks=[mlflow_logger]
-    )
-    print('Fine-tuning ended ✅')
+        print('Fine-tuning head...', end='\r')
+        history_2 = model.fit(
+            train_data, 
+            validation_data=val_data, 
+            epochs=int(EPOCHS*0.3), 
+            callbacks=[mlflow_logger]
+        )
+        print('Fine-tuning ended ✅')
 
-    # saving mlflow loggs
-    mlflow.keras.log_model(model, 'model')
+        ################################ Change 4: Log model to ML Flow with DagsHub registry #######
+        ### We are using a different logic but in case we want to use ML Flow tracking and versioning later ##
+        # saving mlflow loggs
+        mlflow.keras.log_model(model, 'model', registered_model_name="VGG16_Production")  # added registered_model_name
+        ## add debug statement:
+        print('Model logged to MLflow with registered name "VGG16_Production" ✅')
     
-    # saving locally for comparison
-    os.makedirs('temp', exist_ok=True)
-    model.save('temp/current_model.keras')
-    print('Current model saved under temp/current_model.keras ✅')
+        # saving locally for comparison
+        os.makedirs('temp', exist_ok=True)
+        model.save('temp/current_model.keras')
+        print('Current model saved under temp/current_model.keras ✅')
 
-    # write current val_accuracy to current_accuracy.txt
-    with open('temp/current_accuracy.txt', 'w') as f:
-        f.write(str(mlflow_logger.final_val_accuracy))
-    print('Saved current final validation accuracy as temp/current_accuracy.txt ✅.')
+        # write current val_accuracy to current_accuracy.txt
+        with open('temp/current_accuracy.txt', 'w') as f:
+            f.write(str(mlflow_logger.final_val_accuracy))
+        print('Saved current final validation accuracy as temp/current_accuracy.txt ✅.')
 
-    mlflow.end_run()
-    print('Scores are saved with MLflow ✅.')
+        ################## part of change 3: removed; 'with' block automatically closes run ###########
+        ## mlflow.end_run()
+        ## print('Scores are saved with MLflow ✅.')
 
-    # Combine both training histories
-    history = {
-        'accuracy': history_1.history['accuracy'] + history_2.history['accuracy'],
-        'f1_score': history_1.history['f1_score'] + history_2.history['f1_score'],
-        'loss': history_1.history['loss'] + history_2.history['loss'],
-        'val_accuracy': history_1.history['val_accuracy'] + history_2.history['val_accuracy'],
-        'val_f1_score': history_1.history['val_f1_score'] + history_2.history['val_f1_score'],
-        'val_loss': history_1.history['val_loss'] + history_2.history['val_loss']
-    }
+        # Combine both training histories
+        history = {
+            'accuracy': history_1.history['accuracy'] + history_2.history['accuracy'],
+            'f1_score': history_1.history['f1_score'] + history_2.history['f1_score'],
+            'loss': history_1.history['loss'] + history_2.history['loss'],
+            'val_accuracy': history_1.history['val_accuracy'] + history_2.history['val_accuracy'],
+            'val_f1_score': history_1.history['val_f1_score'] + history_2.history['val_f1_score'],
+            'val_loss': history_1.history['val_loss'] + history_2.history['val_loss']
+        }
 
-    # Save history as JSON
-    with open(HISTORY_PATH, 'w') as f:
-        json.dump(history, f)
-        print(f'History saved in {HISTORY_PATH} ✅.')
+        # Save history as JSON
+        with open(HISTORY_PATH, 'w') as f:
+            json.dump(history, f)
+            print(f'History saved in {HISTORY_PATH} ✅.')
 
-    # make git commit for history 
-    # Git commit and push
-    repo_root = Path.cwd()
-    subprocess.run(
-        ['git', 'add', str(HISTORY_PATH)], 
-        cwd=repo_root, 
-        check=True
-    )
-    commit_msg = 'Updated history logs'
-    subprocess.run(
-        ['git', 'commit', '-m', commit_msg], 
-        cwd=repo_root, 
-        check=True
-    )
-    print('Training completed. ✅')
+        # make git commit for history 
+        # Git commit and push
+        repo_root = Path.cwd()
+        subprocess.run(
+            ['git', 'add', str(HISTORY_PATH)], 
+            cwd=repo_root, 
+            check=True
+        )
+        commit_msg = 'Updated history logs'
+        subprocess.run(
+            ['git', 'commit', '-m', commit_msg], 
+            cwd=repo_root, 
+            check=True
+        )
+        print('Training completed. ✅')
 
 if __name__ == '__main__':
     train_model()

@@ -3,5 +3,4 @@
 ['remote "local"']
     url = ../dvc_local
 ['remote "origin"']
-    url = s3://dvc
-    endpointurl = https://dagshub.com/schytze0/deep_leaf.s3
+    url = https://dagshub.com/schytze0/deep_leaf.dvc
