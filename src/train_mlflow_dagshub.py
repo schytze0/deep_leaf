@@ -6,6 +6,7 @@ import mlflow
 import mlflow.keras
 import subprocess 
 from pathlib import Path
+import psutil
 
 # imports from other scripts
 from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME
@@ -66,26 +67,25 @@ class MLFlowLogger(callbacks.Callback):
     def __init__(self, run_id=None):
         super().__init__()
         self.run_id = run_id  # save the runID
-        self.best_val_accuracy = 0
-        self.final_val_accuracy = 0
-        self.final_val_f1_score = 0
+        self.best_val_accuracy = 0.0
+        self.final_val_accuracy = 0.0
+        self.final_val_f1_score = 0.0
         self.best_epoch = 0
+        self.final_val_accuracy = 0.0
+        self.final_val_f1_score = 0.0
 
     def on_epoch_end(self, epoch, logs=None):
-        if not logs:
-            print("Warning: logs object is empty in on_epoch_end")
-            return
+        logs = logs or {}
         try:
-            mlflow.log_metric('train_loss', logs.get('loss'), step=epoch)
-            mlflow.log_metric('train_accuracy', logs.get('accuracy'), step=epoch)
-            mlflow.log_metric('train_f1_score', logs.get('f1_score'), step=epoch)
-            mlflow.log_metric('val_loss', logs.get('val_loss'), step=epoch)
-            mlflow.log_metric('val_accuracy', logs.get('val_accuracy'), step=epoch)
-            mlflow.log_metric('val_f1_score', logs.get('val_f1_score'), step=epoch)
-        
-            # checking if it is the best epoch based on validation
-            val_accuracy = logs.get('val_accuracy')
-            val_f1_score = logs.get('val_f1_score')
+            mlflow.log_metric('train_loss', logs.get('loss', 0.0), step=epoch)
+            mlflow.log_metric('train_accuracy', logs.get('accuracy', 0.0), step=epoch)
+            mlflow.log_metric('train_f1_score', logs.get('f1_score', 0.0), step=epoch)
+            mlflow.log_metric('val_loss', logs.get('val_loss', 0.0), step=epoch)
+            mlflow.log_metric('val_accuracy', logs.get('val_accuracy', 0.0), step=epoch)
+            mlflow.log_metric('val_f1_score', logs.get('val_f1_score', 0.0), step=epoch)
+
+            val_accuracy = logs.get('val_accuracy', 0.0)
+            val_f1_score = logs.get('val_f1_score', 0.0)
 
             if val_accuracy > self.best_val_accuracy:
                 self.best_val_accuracy = val_accuracy
@@ -94,27 +94,19 @@ class MLFlowLogger(callbacks.Callback):
                 mlflow.log_metric('best_val_accuracy', self.best_val_accuracy)
                 mlflow.log_metric('best_val_f1_score', self.best_val_f1_score)
                 mlflow.log_metric('best_epoch', self.best_epoch)
-                print(f'Updated best validation accuracy: {round(val_accuracy, 4)} ✅')
+                print(f'Updated best validation accuracy: {self.best_val_accuracy:.4f} ✅')
         except Exception as e:
             print(f"MLflow logging error: {e}")
 
     def on_train_end(self, logs=None):
-        if logs is None:
-            logs = {}
-            
+        logs = logs or {}
         try:
-
-            # Logging of final scores (depending on what to do we might be interested in best value throughout epochs or the final score)
-            self.final_val_accuracy = logs.get("val_accuracy")
-            self.final_val_f1_score = logs.get("val_f1_score")
-
+            self.final_val_accuracy = logs.get('val_accuracy', self.final_val_accuracy)
+            self.final_val_f1_score = logs.get('val_f1_score', self.final_val_f1_score)
             mlflow.log_metric('final_val_accuracy', self.final_val_accuracy)
             mlflow.log_metric('final_val_f1_score', self.final_val_f1_score)
-
-            # print best values
             print(f'Best Validation Accuracy: {self.best_val_accuracy:.4f}')
-            print(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
-            
+            print(f'Final Validation Accuracy: {self.final_val_accuracy:.4f}')
         except Exception as e:
             print(f"MLflow logging error in on_train_end: {e}")
 
@@ -204,6 +196,7 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         run_id = run.info.run_id  # debug
         print(f"Started MLflow run with ID: {run_id}")  # debug
         # parameters for logging --> moved from setup_mlflow_experiment()
+        mlflow.log_param('dataset', dataset_path)
         mlflow.log_param('model', 'VGG16')
         mlflow.log_param('epochs', EPOCHS)
         mlflow.log_param('batch_size', BATCH_SIZE)
@@ -213,10 +206,10 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
     
         # new insertion
         # TODO: Probably this could be part of the api, the path to the training data?
-        train_data, train_records = load_tfrecord_data(dataset_path)
+        train_data, _ = load_tfrecord_data(dataset_path)
         print('Training data loaded ✅')
 
-        val_data, val_records = load_tfrecord_data('data/raw/valid_subset6.tfrecord')
+        val_data, _ = load_tfrecord_data('data/raw/valid_subset6.tfrecord')
         print('Validation data loaded ✅')
 
         input_shape = (224, 224, 3)
@@ -284,7 +277,7 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         model.compile(
             optimizer=optimizer,
             loss='categorical_crossentropy',
-            metrics=['accuracy', F1Score(name='f1_score')]
+            metrics=['accuracy', F1Score()]
         )
 
         print('Fine-tuning model built ✅')
@@ -317,27 +310,7 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         
         print('Fine-tuning ended ✅')
 
-        ################################ Change 4: Log model to ML Flow with DagsHub registry #######
-        ### We are using a different logic but in case we want to use ML Flow tracking and versioning later ##
-        # saving mlflow loggs
-        mlflow.keras.log_model(model, 'model', registered_model_name="VGG16_Production")  # added registered_model_name
-        ## add debug statement:
-        print('Model logged to MLflow with registered name "VGG16_Production" ✅')
-    
-        # saving locally for comparison
-        os.makedirs('temp', exist_ok=True)
-        model.save('temp/current_model.keras')
-        print('Current model saved under temp/current_model.keras ✅')
-
-        # write current val_accuracy to current_accuracy.txt
-        with open('temp/current_accuracy.txt', 'w') as f:
-            f.write(str(mlflow_logger.final_val_accuracy))
-        print('Saved current final validation accuracy as temp/current_accuracy.txt ✅.')
-
-        ################## part of change 3: removed; 'with' block automatically closes run ###########
-        ## mlflow.end_run()
-        ## print('Scores are saved with MLflow ✅.')
-
+        ################################ Change 4: remove git/dvc/dagshub registry; container is no repo  #######
         # Combine both training histories
         history = {
             'accuracy': history_1.history['accuracy'] + history_2.history['accuracy'],
@@ -347,26 +320,51 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
             'val_f1_score': history_1.history['val_f1_score'] + history_2.history['val_f1_score'],
             'val_loss': history_1.history['val_loss'] + history_2.history['val_loss']
         }
+        
+        # Log system metrics
+        mlflow.log_metric('cpu_usage_percent', psutil.cpu_percent())
+        mlflow.log_metric('memory_usage_percent', psutil.virtual_memory().percent)
+        
+        # Registering model on MLflow model registry
+        mlflow.keras.log_model(model, 'model', registered_model_name="VGG16_Production")  # added registered_model_name
+        ## add debug statement:
+        print('Model logged to MLflow with registered name "VGG16_Production" ✅')
+    
+        # Log artifacts
+        os.makedirs('temp', exist_ok=True)
+        model.save('temp/current_model.keras')
+        print('Current model saved under temp/current_model.keras ✅')
+        mlflow.log_artifact('temp/current_model.keras', artifact_path='model')
 
+        # write current val_accuracy to current_accuracy.txt
+        with open('temp/current_accuracy.txt', 'w') as f:
+            f.write(str(mlflow_logger.final_val_accuracy))
+        print('Saved current final validation accuracy as temp/current_accuracy.txt ✅.')
+        mlflow.log_artifact('temp/current_accuracy.txt')
         # Save history as JSON
         with open(HISTORY_PATH, 'w') as f:
             json.dump(history, f)
-            print(f'History saved in {HISTORY_PATH} ✅.')
+        mlflow.log_artifact(HISTORY_PATH)
+        print(f'History saved in {HISTORY_PATH} ✅.')
+        
+        ################## part of change 3: removed; 'with' block automatically closes run ###########
+        ## mlflow.end_run()
+        ## print('Scores are saved with MLflow ✅.')
 
-        # make git commit for history 
+        # make git commit for history --> removed
         # Git commit and push
-        repo_root = Path.cwd()
-        subprocess.run(
-            ['git', 'add', str(HISTORY_PATH)], 
-            cwd=repo_root, 
-            check=True
-        )
-        commit_msg = 'Updated history logs'
-        subprocess.run(
-            ['git', 'commit', '-m', commit_msg], 
-            cwd=repo_root, 
-            check=True
-        )
+        ## repo_root = Path.cwd()
+        ## subprocess.run(
+        ##     ['git', 'add', str(HISTORY_PATH)], 
+        ##     cwd=repo_root, 
+        ##     check=True
+        ## )
+        ## commit_msg = 'Updated history logs'
+        ## subprocess.run(
+        ##     ['git', 'commit', '-m', commit_msg], 
+        ##     cwd=repo_root, 
+        ##     check=True
+        ## )
         print('Training completed. ✅')
 
 if __name__ == '__main__':
