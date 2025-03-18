@@ -99,7 +99,6 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - ./app:/app/app
       - ./data:/app/data
       - ./models:/app/models
       - ./logs:/app/logs
