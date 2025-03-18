@@ -134,22 +134,6 @@ def train_model():
     # load mlflow
     setup_mlflow_experiment()
     
-    # Add a basic connectivity check for MLflow server --> debug
-    try:
-        import socket
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # Extract hostname from MLFLOW_TRACKING_URL
-        from urllib.parse import urlparse
-        hostname = urlparse(MLFLOW_TRACKING_URL).hostname
-        port = urlparse(MLFLOW_TRACKING_URL).port or 5001
-        s.connect((hostname, port))
-        s.close()
-        print(f"MLflow server at {hostname}:{port} is reachable ✅")
-    except Exception as e:
-        print(f"WARN: Cannot connect to MLflow server: {e}")
-        print("MLflow tracking may not work correctly.")
-    ########################################################################
-    
     # new insertion
     train_data, train_records = load_tfrecord_data(
         'data/training/train.tfrecord'
