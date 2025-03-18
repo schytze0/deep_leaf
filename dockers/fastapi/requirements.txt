@@ -4,7 +4,7 @@ mlflow
 scikit-learn
 pandas
 numpy
-tensorflow  # because of using .keras model type
+tensorflow>=2.8  # because of using .keras model type
 pyjwt
 dvc
 python-dotenv
