@@ -33,7 +33,7 @@ class F1Score(tf.keras.metrics.Metric):
         recall = self.recall.result()
         return 2 * ((precision * recall) / (precision + recall + tf.keras.backend.epsilon()))
 
-    def reset_states(self):
+    def reset_state(self):
         self.precision.reset_state()
         self.recall.reset_state()
 
