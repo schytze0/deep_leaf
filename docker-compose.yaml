@@ -99,10 +99,12 @@ services:
     ports:
       - "8001:8000"
     volumes:
+      - ./app:/app/app
       - ./data:/app/data
       - ./models:/app/models
       - ./logs:/app/logs
       - ./temp:/app/temp
+      - ./mlflow/artifacts:/app/mlflow/artifacts
       - .:/app
       - ./.env:/app/.env  # For testing with .env
     depends_on:
