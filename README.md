@@ -29,6 +29,11 @@ There are some helper files:
 ├── README.md
 ├── app
 │   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── __init__.cpython-38.pyc
+│   │   ├── main.cpython-311.pyc
+│   │   └── main.cpython-38.pyc
 │   └── main.py
 ├── architecture.excalidraw.png
 ├── data
@@ -38,7 +43,31 @@ There are some helper files:
 │   │   ├── train_subset10.tfrecord
 │   │   ├── valid_subset1.tfrecord
 │   │   ├── ...
-│   │   ├── valid_subset10.tfrecord
+│   │   └── valid_subset10.tfrecord
+│   ├── test
+│   │   ├── AppleCedarRust1.JPG
+│   │   ├── ..
+│   │   ├── AppleCedarRust4.JPG
+│   │   ├── AppleScab1.JPG
+│   │   ├── AppleScab2.JPG
+│   │   ├── AppleScab3.JPG
+│   │   ├── CornCommonRust1.JPG
+│   │   ├── CornCommonRust2.JPG
+│   │   ├── CornCommonRust3.JPG
+│   │   ├── PotatoEarlyBlight1.JPG
+│   │   ├── ...
+│   │   ├── PotatoEarlyBlight5.JPG
+│   │   ├── PotatoHealthy1.JPG
+│   │   ├── PotatoHealthy2.JPG
+│   │   ├── TomatoEarlyBlight1.JPG
+│   │   ├── ...
+│   │   ├── TomatoEarlyBlight6.JPG
+│   │   ├── TomatoHealthy1.JPG
+│   │   ├── ...
+│   │   ├── TomatoHealthy4.JPG
+│   │   ├── TomatoYellowCurlVirus1.JPG
+│   │   ├── ...
+│   │   └── TomatoYellowCurlVirus6.JPG
 │   └── training
 │       ├── train.tfrecord
 │       └── valid.tfrecord
@@ -61,8 +90,7 @@ There are some helper files:
 │       └── Dockerfile
 ├── logs
 │   ├── history_20250213_084609.json
-│   ├── ...
-│   └── history_20250318_133929.json
+│   └── ...
 ├── merge_progress.json
 ├── mlflow
 │   └── artifacts
@@ -70,28 +98,29 @@ There are some helper files:
 ├── models
 │   ├── metadata.txt
 │   └── production_model.keras
-├── my_readme.md
 ├── production_model.keras.dvc
 ├── requirements.txt
 ├── requirements_mac.txt
 ├── requirements_wsl2.txt
 ├── setup.py
 ├── src
+│   ├── __init__.py
+│   ├── __pycache__
+│   ├── config.py
+│   ├── data_loader.py
+│   ├── helpers.py
 │   ├── local_dagshub
 │   │   ├── data_loader.py
 │   │   ├── prod_model_select_mlflow_dagshub.py
 │   │   └── train_mlflow_dagshub.py
-│   ├── __init__.py
-│   ├── config.py
-│   ├── data_loader.py
-│   ├── helpers.py
-│   ├── logs
 │   ├── model.py
 │   ├── predict.py
 │   ├── prod_model_select.py
+│   ├── prod_model_select_erwin.py
 │   ├── raw_data_split.py
 │   ├── test_config.py
 │   ├── train.py
+│   ├── train_erwin.py
 │   ├── trials.py
 │   └── utils.py
 ├── temp
