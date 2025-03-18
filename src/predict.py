@@ -3,9 +3,9 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing import image
 from io import BytesIO
+import argparse
 
 # user defined functions and libraries
-# from src.data_loader import load_data # TODO: needs to be written
 from src.config import MODEL_PATH, IMG_SIZE, TEST_PATH
 from src.helpers import load_tfrecord_data
 
@@ -16,7 +16,6 @@ def load_trained_model():
     Returns:
     - model: The loaded Keras model.
     '''
-    # TODO: NEEDS UPDATE TO NEW MODEL models/production_model.keras
     return tf.keras.models.load_model(MODEL_PATH)
 
 def get_class_labels():
@@ -27,9 +26,7 @@ def get_class_labels():
     - class_labels (dict): Mapping from index to class label.
     '''
 
-    # new data load from .tfrecord
-    # DEBUG: Here should be new import; probably needs new handling
-    train_data = load_tfrecord_data('data/raw/train_subset1.tfrecord')
+    train_data = load_tfrecord_data('data/training/train.tfrecord')
 
     # new approach with dvc-tracking of data
     class_labels = []
@@ -54,7 +51,7 @@ def preprocess_image(file): # nvd06: changed from image_path to file to fit the 
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     return img_array
 
-def predict_single_image(file): # nvd06: changed from image_path to file to fit the main.yp and FastAPI setup.
+def predict_single_image(file): 
     '''
     Predicts the class of a single image.
 
@@ -66,17 +63,20 @@ def predict_single_image(file): # nvd06: changed from image_path to file to fit 
     '''
     model = load_trained_model()
     class_labels = get_class_labels()  # Get dynamic class labels
-    img_array = preprocess_image(file) # nvd06: changed from image_path to file to fit the main.yp and FastAPI setup.
+    img_array = preprocess_image(file) 
     predictions = model.predict(img_array)
     class_index = np.argmax(predictions, axis=1)[0]
 
     return class_labels[class_index]  # Return class label instead of index
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Predict image class using a trained model.')
+    parser.add_argument('image_path', type=str, help='Path to the image file')
+    args = parser.parse_args()
+
     # Run predictions on the test folder by default
     print(f'Running predictions on the test set: {TEST_PATH}')
-    # DEBUG: NEEDS UPDATE TO JUST SINGLE PICTURE
-    results = predict_folder(TEST_PATH)
+    results = predict_single_image(TEST_PATH)
 
     print('\nPredictions for Test Set:')
     for filename, label in results.items():
