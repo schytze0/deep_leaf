@@ -34,28 +34,28 @@ class F1Score(tf.keras.metrics.Metric):
         return 2 * ((precision * recall) / (precision + recall + tf.keras.backend.epsilon()))
 
     def reset_states(self):
-        self.precision.reset_states()
-        self.recall.reset_states()
+        self.precision.reset_state()
+        self.recall.reset_state()
 
 # Access dagshub 
 # Load environment variables from .env file
-script_dir = os.path.dirname(os.path.abspath(__file__))
-dotenv_path = os.path.join(script_dir, "..", ".env")
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# dotenv_path = os.path.join(script_dir, "..", ".env")
 
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path, override=True)
-    print('.env file found and loaded ✅')
-else:
-    print("Warning: .env file not found!")
+# if os.path.exists(dotenv_path):
+#     load_dotenv(dotenv_path, override=True)
+#     print('.env file found and loaded ✅')
+# else:
+#     print("Warning: .env file not found!")
 
-# Debugging: Print environment variables to verify they're loaded
-dagshub_username = os.getenv('DAGSHUB_USERNAME')
-dagshub_key = os.getenv('DAGSHUB_KEY')
+# # Debugging: Print environment variables to verify they're loaded
+# dagshub_username = os.getenv('DAGSHUB_USERNAME')
+# dagshub_key = os.getenv('DAGSHUB_KEY')
 
-if not dagshub_username:
-    print("❌ ERROR: DAGSHUB_USERNAME is not set.")
-if not dagshub_key:
-    print("❌ ERROR: DAGSHUB_KEY is not set.")
+# if not dagshub_username:
+#     print("❌ ERROR: DAGSHUB_USERNAME is not set.")
+# if not dagshub_key:
+#     print("❌ ERROR: DAGSHUB_KEY is not set.")
 
 # ML Flow setup (still needs to be tested)
 class MLFlowLogger(callbacks.Callback):
@@ -136,15 +136,12 @@ def setup_mlflow_experiment():
     mlflow.log_metric('val_f1_score', 0, step=0)
 
 # MAIN FUNCTION FOR TRAINING
-def train_model(dataset_path: str = None): 
+def train_model(): 
     '''
     Trains the model in two phases:
     1. Train only the classification head (with frozen base layers).
     2. Fine-tune the top layers of the base model with a smaller learning rate.
     3. Integrates MLflow to track scores (helpful if different training data is used; NOT TESTED YET)
-    
-    Arguments:
-    - dataset_path: ???
 
     Returns: None   
     
@@ -255,22 +252,21 @@ def train_model(dataset_path: str = None):
 
     # make git commit for history 
     # Git commit and push
-    repo_root = Path.cwd()
-    subprocess.run(
-        ['git', 'add', str(HISTORY_PATH)], 
-        cwd=repo_root, 
-        check=True
-    )
-    commit_msg = 'Updated history logs'
-    subprocess.run(
-        ['git', 'commit', '-m', commit_msg], 
-        cwd=repo_root, 
-        check=True
-    )
+    # repo_root = Path.cwd()
+    # subprocess.run(
+    #     ['git', 'add', str(HISTORY_PATH)], 
+    #     cwd=repo_root, 
+    #     check=True
+    # )
+    # commit_msg = 'Updated history logs'
+    # subprocess.run(
+    #     ['git', 'commit', '-m', commit_msg], 
+    #     cwd=repo_root, 
+    #     check=True
+    # )
     print('Training completed. ✅')
 
 if __name__ == '__main__':
-    # REVIEW: I added here the data_loader()
     load_data()
     train_model()
     result = update_model_if_better()

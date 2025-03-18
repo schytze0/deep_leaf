@@ -7,6 +7,11 @@ import json
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.get_logger().setLevel('ERROR')
 
+# Get the absolute path of the script
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Get the project root directory 
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+
 def merge_tfrecords(input_files, output_file):
     with tf.io.TFRecordWriter(output_file) as writer:
         for input_file in input_files:
@@ -24,9 +29,9 @@ def read_progress(progress_file):
     return 0
 
 def load_data():
-    raw_data_dir = os.path.join('app', 'data', 'raw')
-    training_data_dir = os.path.join('app', 'data', 'training')
-    progress_file = os.path.join('app', 'merge_progress.json')
+    raw_data_dir = os.path.join(PROJECT_ROOT, 'data', 'raw')
+    training_data_dir = os.path.join(PROJECT_ROOT, 'data', 'training')
+    progress_file = os.path.join(PROJECT_ROOT, 'merge_progress.json')
 
     os.makedirs(training_data_dir, exist_ok=True)
 

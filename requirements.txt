@@ -17,3 +17,6 @@ setuptools
 pytest
 httpx
 requests
+apache-airflow
+celery
+redis
