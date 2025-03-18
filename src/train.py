@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 
 # imports from other scripts
-from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES
+from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, MLFLOW_TRACKING_URL
 from src.model import build_vgg16_model
 from src.helpers import load_tfrecord_data
 from src.prod_model_select import update_model_if_better
@@ -36,26 +36,6 @@ class F1Score(tf.keras.metrics.Metric):
     def reset_states(self):
         self.precision.reset_state()
         self.recall.reset_state()
-
-# Access dagshub 
-# Load environment variables from .env file
-# script_dir = os.path.dirname(os.path.abspath(__file__))
-# dotenv_path = os.path.join(script_dir, "..", ".env")
-
-# if os.path.exists(dotenv_path):
-#     load_dotenv(dotenv_path, override=True)
-#     print('.env file found and loaded ✅')
-# else:
-#     print("Warning: .env file not found!")
-
-# # Debugging: Print environment variables to verify they're loaded
-# dagshub_username = os.getenv('DAGSHUB_USERNAME')
-# dagshub_key = os.getenv('DAGSHUB_KEY')
-
-# if not dagshub_username:
-#     print("❌ ERROR: DAGSHUB_USERNAME is not set.")
-# if not dagshub_key:
-#     print("❌ ERROR: DAGSHUB_KEY is not set.")
 
 # ML Flow setup (still needs to be tested)
 class MLFlowLogger(callbacks.Callback):
@@ -111,6 +91,10 @@ def setup_mlflow_experiment():
         os.getenv('MLFLOW_EXPERIMENT_NAME', 'Plant_Classification_Experiment')
     )
 
+    print(f'MLflow tracking URI set to: {os.getenv("MLFLOW_TRACKING_URI","http://mlflow:5001")}')
+    print(f'MLflow experiment set to: {os.getenv("MLFLOW_EXPERIMENT_NAME", "Plant_Classification_Experiment")}')
+
+
     # parameters for logging
     mlflow.log_param('model', 'VGG16')
     mlflow.log_param('epochs', EPOCHS)
@@ -150,6 +134,22 @@ def train_model():
     # load mlflow
     setup_mlflow_experiment()
     
+    # Add a basic connectivity check for MLflow server --> debug
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Extract hostname from MLFLOW_TRACKING_URL
+        from urllib.parse import urlparse
+        hostname = urlparse(MLFLOW_TRACKING_URL).hostname
+        port = urlparse(MLFLOW_TRACKING_URL).port or 5001
+        s.connect((hostname, port))
+        s.close()
+        print(f"MLflow server at {hostname}:{port} is reachable ✅")
+    except Exception as e:
+        print(f"WARN: Cannot connect to MLflow server: {e}")
+        print("MLflow tracking may not work correctly.")
+    ########################################################################
+    
     # new insertion
     train_data, train_records = load_tfrecord_data(
         'data/training/train.tfrecord'
@@ -176,7 +176,7 @@ def train_model():
     print('Model built ✅')
 
     # logging in mlflow
-    # INFO: Starting MLflow
+    # Starting MLflow
     mlflow_logger = MLFlowLogger()
     print('MLflow logger started ✅')
 
@@ -250,20 +250,6 @@ def train_model():
         json.dump(history, f)
         print(f'History saved in {HISTORY_PATH} ✅.')
 
-    # make git commit for history 
-    # Git commit and push
-    # repo_root = Path.cwd()
-    # subprocess.run(
-    #     ['git', 'add', str(HISTORY_PATH)], 
-    #     cwd=repo_root, 
-    #     check=True
-    # )
-    # commit_msg = 'Updated history logs'
-    # subprocess.run(
-    #     ['git', 'commit', '-m', commit_msg], 
-    #     cwd=repo_root, 
-    #     check=True
-    # )
     print('Training completed. ✅')
 
 if __name__ == '__main__':

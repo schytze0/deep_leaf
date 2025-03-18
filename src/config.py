@@ -30,7 +30,7 @@ TEST_PATH = os.path.join(HOME_DIR, ".cache/kagglehub/datasets/vipoooool/new-plan
 
 # Model save path
 MODEL_DIR = "./models"  # Directory to store trained models
-MODEL_PATH = os.path.join(MODEL_DIR, "plant_disease_model.keras")  # Path for saving/loading the model
+MODEL_PATH = os.path.join(MODEL_DIR, "production_model.keras")  # Path for saving/loading the model
 
 # Training parameters
 BATCH_SIZE = 32
@@ -52,10 +52,7 @@ NUM_CLASSES = 38
 
 # Dagshub credits
 DAGSHUB_REPO = os.getenv("DAGSHUB_REPO", "https://dagshub.com/schytze0/deep_leaf")
+MLFLOW_TRACKING_URL = "http://mlflow:5000"
 ## MLFLOW_TRACKING_URL = 'https://dagshub.com/schytze0/deep_leaf.mlflow'
 MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME","Plant_Classification_Experiment")
 MODEL_DVC='production_model.keras.dvc'
-
-###################### Changes added for ML Flow containerization #################
-
-MLFLOW_TRACKING_URL = "http://mlflow:5000"

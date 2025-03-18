@@ -193,7 +193,6 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
     mlflow_uri = mlflow.get_tracking_uri()  # debug
     print(f"Active MLflow tracking URI: {mlflow_uri}")  # debug
     
-    # DEBUG(Phil): This should be add the beginning, because now you set it twice (above and here again)
     # setup mlflow experiment
     setup_mlflow_experiment()
     
@@ -209,10 +208,8 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         mlflow.log_param('input_shape', str((224, 224, 3)))
         print("Parameters logged successfully")  # debug
 
-        # INFO(Phil): The metrics are not initiliased! Myabe they are in mlflfowLogger!
-
         # new insertion
-        # DEBUG(Phil): Correct dataloading
+        # DEBUG(Phil): Correct dataloading: data/training/train.tfrecord // data/training/valid.tfrecord
         train_data, _ = load_tfrecord_data('data/raw/train_subset6.tfrecord')
         print('Training data loaded ✅')
 
@@ -234,7 +231,7 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         print('Model built ✅')
 
         # logging in mlflow
-        # INFO: Starting MLflow
+        # Starting MLflow
         mlflow_logger = MLFlowLogger()
         print('MLflow logger started ✅')
         
