@@ -70,14 +70,15 @@ def predict_single_image(file):
     return class_labels[class_index]  # Return class label instead of index
 
 if __name__ == '__main__':
+    # added to pass argument within terminal
     parser = argparse.ArgumentParser(description='Predict image class using a trained model.')
     parser.add_argument('image_path', type=str, help='Path to the image file')
     args = parser.parse_args()
 
     # Run predictions on the test folder by default
-    print(f'Running predictions on the test set: {TEST_PATH}')
-    results = predict_single_image(TEST_PATH)
+    print(f'Running predictions on the test set: {args.image_path}')
+    results = predict_single_image(args.image_path)
 
-    print('\nPredictions for Test Set:')
-    for filename, label in results.items():
-        print(f'{filename}: {label}')
+    print(f'\nPredictions for Test Set: {results}')
+    # for filename, label in results.items():
+    #     print(f'{filename}: {label}')

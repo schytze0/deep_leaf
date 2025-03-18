@@ -37,35 +37,7 @@ def load_environment():
     
     print(f'Loaded credentials:\n- URI: {mlflow_url}\n- Experiment name: {experiment_name}')
     
-    username = os.getenv("DAGSHUB_USER")
-    token = os.getenv("DAGSHUB_TOKEN")
-    
-    if not username or not token:
-        raise ValueError(
-            "DAGSHUB_USER or DAGSHUB_TOKEN not set in .env"
-        )
-    
-    print(f'Loaded credentials: - username: {username}')
-
-    return mlflow_url, experiment_name, username, token
-
-################################ production ###########################################
-# TODO: Erwin - for production we can use this code to load the best model retreived by get_best_model()
-#
-# # Get the best model
-# model_path, run_id, accuracy = get_best_model() 
-# if model_path:
-#    # Load the model
-#    best_model = mlflow.keras.load_model(model_path)
-#    
-#    # Copy the model to the production repository or deployment location
-#    production_path = "/path/to/production/model"  # path to be defined
-#   # Use appropriate methods for model transfer: shutil.copy, git operations, etc.
-#    
-#    print(f"Best model (accuracy: {accuracy:.4f}) deployed to production")
-# else:
-#     print("Failed to retrieve the best model")
-#########################################################################################
+    return mlflow_url, experiment_name
 
 def get_best_model(mlflow_url, experiment_name):
     """
@@ -128,132 +100,9 @@ def check_metadata_exists():
         print(f"No metadata.txt or {MODEL_DVC} found; assuming initial accuracy of 0.0")
         return False, 0.0
 
-@tenacity.retry(wait=tenacity.wait_exponential(multiplier=1, min=4, max=10), stop=tenacity.stop_after_attempt(3))
-def dvc_push(repo_root):
-    """Retry DVC push up to 3 times with exponential backoff."""
-    subprocess.run(["dvc", "push"], cwd=repo_root, check=True)
-    print("Pushed model to DVC remote ✅")
-
-    # need of git push after dvc push (change of dvc files)
-    subprocess.run(['git', 'push'], cwd=repo_root, check=True)
-    print("Pushed dvc changes to git ✅")
-
-def add_or_modify_remote_with_auth(dvc_remote, repo_root, dagshub_repo, token):
-    '''
-    Checks if remote is already there or not. 
-
-    Inputs:
-        - dvc_remote: branch in dagshub
-        - repo_root: root path
-        - dagshub_repo: url of repo
-    
-    Returns: none
-    '''
-    try:
-        # Check if the remote already exists
-        result = subprocess.run(
-            ['dvc', 'remote', 'list', repo_root],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=True
-        ).stdout
-
-        # Check if correct remote and url exist
-        lines = result.splitlines()
-        remote_exists = False
-        correct_url = False
-
-        for line in lines:
-            name, url = line.split(maxpslit=1)
-            if name == dvc_remote:
-                remote_exists = True
-                if url == 's3://dvc':
-                    correct_url = True
-
-        # case remote and correct url exist
-        if remote_exists and correct_url:
-            # modify endpoint
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, 'endpointurl', dagshub_repo],
-                cwd=repo_root,
-                check=True
-            )
-
-            # modify authentification
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'access_key_id', token], 
-                cwd=repo_root, 
-                check=True
-            )
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'secret_access_key', token], 
-                cwd=repo_root, 
-                check=True)
-
-            print(f'Remote {dvc_remote} modified with authentification successfully.')
-        elif remote_exists and not correct_url:
-            # modify endpoint
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, 'url', 's3://dvc'],
-                cwd=repo_root,
-                check=True
-            )
-
-            # modify endpoint
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, 'endpointurl', dagshub_repo],
-                cwd=repo_root,
-                check=True
-            )
-
-            # modify authentification
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'access_key_id', token], 
-                cwd=repo_root, 
-                check=True
-            )
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'secret_access_key', token], 
-                cwd=repo_root, 
-                check=True)
-
-            print(f'Remote {dvc_remote} modified (endpointurl) with authentification successfully.')
-        else:
-            # Case neither remote nor url exist or url exist but under wrong remote name
-            # modify endpoint
-            subprocess.run(
-                ['dvc', 'remote', 'add', dvc_remote, 'url', 's3://dvc'],
-                cwd=repo_root,
-                check=True
-            )
-
-            # modify endpoint
-            subprocess.run(
-                ['dvc', 'remote', 'add', dvc_remote, 'endpointurl', dagshub_repo],
-                cwd=repo_root,
-                check=True
-            )
-
-            # modify authentification
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'access_key_id', token], 
-                cwd=repo_root, 
-                check=True
-            )
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'secret_access_key', token], 
-                cwd=repo_root, 
-                check=True)
-
-            print(f'Remote {dvc_remote} added with authentification successfully.')
-
-    except subprocess.CalledProcessError as e:
-        print(f'Error during remote configuration: {e}')
-
-def upload_model_to_dagshub(model_artifact_path, val_accuracy, branch="main"): 
+def overwrite_existing(model_artifact_path, val_accuracy):
     """
-    Copy the best model file into src/main/models/, create a DVC pointer file (models.dvc) and metadata.txt in the repo root, then commit and push changes.
+    Copy the best model file into /models/, create a DVC pointer file (models.dvc) and metadata.txt in the repo root.
     """
     repo_root = Path.cwd()
     
@@ -261,64 +110,26 @@ def upload_model_to_dagshub(model_artifact_path, val_accuracy, branch="main"):
     target_dir.mkdir(parents=True, exist_ok=True)
     
     # Directly fetch model.keras from the data/ subdirectory
-    source_model_file = Path(model_artifact_path) / "data" / "model.keras"
+    source_model_file = repo_root / "temp" / "current_model.keras"
     if not source_model_file.exists():
-        artifact_files = list(Path(model_artifact_path).rglob("*"))
+        artifact_files = list(Path("app/temp/").rglob("*"))
         print(f"Error: No model.keras found at {source_model_file}. Available files: {artifact_files}")
         raise FileNotFoundError(f"No model.keras found in {model_artifact_path}/data")
     
-    dest_model_file = target_dir / "production_model.keras"
+    dest_model_file = repo_root / "models" / "production_model.keras"
     shutil.copy2(source_model_file, dest_model_file)
     print(f"Copied model to {dest_model_file}")
-    
-    # Track with DVC
-    subprocess.run(["dvc", "add", str(dest_model_file)], cwd=repo_root, check=True)
-    dvc_file = target_dir / MODEL_DVC
-    target_dvc_file = repo_root / MODEL_DVC
-    shutil.move(dvc_file, target_dvc_file)
-    print(f"Moved DVC pointer to {target_dvc_file}")
-    
-    # Update metadata.txt in models (file is component of production model)
-    metadata_path = repo_root / "models/metadata.txt"
+
+     # Update metadata.txt in models (file is component of production model)
+    metadata_path = repo_root / "models" / "metadata.txt"
     with open(metadata_path, "w") as f:
         f.write(str(val_accuracy))
     print(f"Updated {metadata_path} with accuracy: {val_accuracy:.4f}")
     
-    # Git commit and push
-    subprocess.run(["git", "add", str(target_dvc_file), str(metadata_path)], cwd=repo_root, check=True)
-    commit_msg = f"Update model with accuracy {val_accuracy:.4f}"
-    subprocess.run(["git", "commit", "-m", commit_msg], cwd=repo_root, check=True)
-    subprocess.run(["git", "push", "origin", branch], cwd=repo_root, check=True)
-    print("Pushed Git changes")
-    
-    # Configure DVC remote and push with retry
-    dvc_remote = "origin"
-    TOKEN = os.getenv('DAGSHUB_KEY')
-
-    add_or_modify_remote_with_auth(dvc_remote, repo_root, DAGSHUB_REPO, TOKEN)
-    
-    try:
-        dvc_push(repo_root)
-    except Exception as e:
-        print(f"❌ DVC push failed after retries: {e}")
-        raise
-    
-    return True
-
-def manual_upload_instructions(model_path, val_accuracy):
-    print("\n=== MANUAL UPLOAD INSTRUCTIONS ===")
-    print(f"1. Locate model.keras in: {model_path}/data")
-    print("2. Rename to 'plant_disease_model.keras' and move to 'models/'")  # If main branch uses src/models/, update to 'src/models/'.
-    print("3. Run: dvc add models/production_model.keras")  # If main branch uses src/models/, update to 'dvc add src/models/plant_disease_model.keras'.
-    print(f"4. Create/update models/metadata.txt with: {val_accuracy}")
-    print("5. Run: git add models.dvc models/metadata.txt")
-    print("6. Run: git commit -m 'Update model' && git push origin main")  # Change "dev-erwin" to "main" after merging into main branch.
-    print("7. Run: dvc push")
-    print("===============================\n")
 
 def update_model_if_better():
     try:
-        mlflow_url, experiment_name, username, token = load_environment()
+        mlflow_url, experiment_name = load_environment()
     except ValueError as e:
         return str(e)
         
@@ -330,17 +141,16 @@ def update_model_if_better():
     exists, existing_accuracy = check_metadata_exists()
     action = "No change"
     
-    
     if not exists or best_val_accuracy > existing_accuracy:
         action = "Created" if not exists else "Updated"
         try:
-            upload_model_to_dagshub(username, token, best_model_path, best_val_accuracy)
+            overwrite_existing(best_model_path, best_val_accuracy)
             return f"Model {action.lower()} - New accuracy: {best_val_accuracy:.4f}" + (f", Previous: {existing_accuracy:.4f}" if exists else "")
         except Exception as e:
             print(f"Error during upload: {e}")
-            manual_upload_instructions(username, best_model_path, best_val_accuracy)
             return f"Failed to {action.lower()} model; see manual instructions"
-    return f"No change - Existing accuracy ({existing_accuracy:.4f}) >= Current ({best_val_accuracy:.4f})"
+    else: 
+        return f"No change - Existing accuracy ({existing_accuracy:.4f}) >= Current ({best_val_accuracy:.4f})"
 
 if __name__ == "__main__":
     result = update_model_if_better()

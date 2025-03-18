@@ -24,9 +24,9 @@ def read_progress(progress_file):
     return 0
 
 def load_data():
-    raw_data_dir = os.path.join('app', 'data', 'raw')
-    training_data_dir = os.path.join('app', 'data', 'training')
-    progress_file = os.path.join('app', 'merge_progress.json')
+    raw_data_dir = os.path.join('data', 'raw')
+    training_data_dir = os.path.join('data', 'training')
+    progress_file = os.path.join('merge_progress.json')
 
     os.makedirs(training_data_dir, exist_ok=True)
 

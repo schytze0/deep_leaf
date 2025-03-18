@@ -35,7 +35,7 @@ MODEL_PATH = os.path.join(MODEL_DIR, "production_model.keras")  # Path for savin
 # Training parameters
 BATCH_SIZE = 32
 IMG_SIZE = (224, 224)
-EPOCHS = 5
+EPOCHS = 45
 
 # Ensure the model directory exists
 if not os.path.exists(MODEL_DIR):
@@ -48,7 +48,7 @@ os.makedirs(LOGS_DIR, exist_ok=True)  # Ensure logs directory exists
 # Generate timestamp for unique history files
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 HISTORY_PATH = os.path.join(LOGS_DIR, f"history_{TIMESTAMP}.json")
-NUM_CLASSES = 38
+NUM_CLASSES = 3
 
 # Dagshub credits
 DAGSHUB_REPO = os.getenv("DAGSHUB_REPO", "https://dagshub.com/schytze0/deep_leaf")

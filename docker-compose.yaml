@@ -104,6 +104,7 @@ services:
       - ./logs:/app/logs
       - ./temp:/app/temp
       - .:/app
+      - ./mlflow/artifacts:/app/mlflow/artifacts
       - ./.env:/app/.env  # For testing with .env
     depends_on:
       - mlflow
