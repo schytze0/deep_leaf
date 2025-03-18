@@ -1,7 +1,12 @@
+# Imports for FastAPI:
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
-from src.train import train_model  # Import train_model function from train.py
-from src.predict import predict_single_image  # Import predict_single_image function from predict.py
+
+# Imports from existing scripts:
+from src.data_loader import load_data # import the data from data_loader.py
+from src.train_mlflow_dagshub import train_model  # import train_model function from train.py
+from src.predict import predict_single_image  # import predict_single_image function from predict.py
+from src.prod_model_select_mlflow_dagshub import update_model_if_better # import the prod_model_select from the py file
 
 app = FastAPI()
 
@@ -14,18 +19,30 @@ async def root():
 
 @app.post("/train")
 async def train_model_endpoint(request: TrainRequest):
-    # train_model(request.dataset_path)
-    # REVIEW: the model is not given with the api, the data fetch is implemented in src/data_loader.py and called in train.py
-    # REVIEW: I added try/except to get messages if training successfully ended and error if not
+    
+    # Endpoint that:
+    # 1) Merges/loads the data subsets via load_data()
+    # 2) Trains the model
+    # 3) Checks if the newly trained model is better"
+
     try:
-        train_model()
-        return{"message": "Model successfully trained."}
+        load_data() # load data or merge new subsets
+        train_model(dataset_path=request.dataset_path) # train the model, which we can also leave this blank if want no argument to pass
+        result = update_model_if_better() # update the model if it’s better (promote to production)
+
+        return {
+            "message": "Training completed successfully.",
+            "model_management_result": result}
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Training failed: {str(e)}')
 
-# Define /predict endpoint that uses predict_single_image
+# Define /predict Endpoint that takes in an uploaded image, processes it and returns the predicted class label.
 @app.post("/predict/")
 async def predict_endpoint(file: UploadFile = File(...)):
-    # Call the predict_single_image function
-    prediction = predict_single_image(file.filename)  # file.filename is the path or name of the uploaded file
-    return {"prediction": prediction}
+    try:
+    # Pass the entire UploadFile object, matching predict_single_image in predict.py
+        prediction = predict_single_image(file)
+        return {"prediction": prediction}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")

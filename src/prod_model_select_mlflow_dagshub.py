@@ -3,42 +3,48 @@ import mlflow
 import mlflow.keras
 import shutil
 import subprocess
-from dotenv import load_dotenv
 from pathlib import Path
 import tenacity
 
+
+#################### Changes proposed to run ML Flow in a Docker container ##################
+## I'll keep the original code commented out for reference; using '##' in the beginning of each line
+
 # imports from config
-from src.config import MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME, DAGSHUB_REPO, MODEL_DVC
+from src.config import MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME, DAGSHUB_REPO, MODEL_DVC, DAGSHUB_USERNAME, DAGSHUB_KEY
 
 # Ensure script runs from this file path (or any of yours)
-# INFO: CLONE_DIR must be saved in your .env file
-os.chdir(os.getenv("CLONE_DIR")) 
+## INFO: CLONE_DIR must be saved in your .env file --> change logic to docker-compose.yaml for credentials
+####################################
+os.chdir(os.getenv("CLONE_DIR", "/app"))  # change 1: added , "/app"; the root in container
 
-def load_environment():
-    """
-    Load environment variables from .env file
+#################### CHANGE 2: Remove load_environment() and use Docker env vars #####
+
+## def load_environment():
+##     """
+##     Load environment variables from .env file
     
-    Returns:
-    - username: DAGSHUB_USERNAME from .env
-    - token: DAGSHUB_TOKEN from .env
-    """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    dotenv_path = os.path.join(script_dir, "..", ".env")
+    ## Returns:
+    ## - username: DAGSHUB_USERNAME from .env
+    ## - token: DAGSHUB_TOKEN from .env
+    ## """
+    ## script_dir = os.path.dirname(os.path.abspath(__file__))
+    ## dotenv_path = os.path.join(script_dir, "..", ".env")
     
-    if os.path.exists(dotenv_path):
-        load_dotenv(dotenv_path, override=True)
-        print('.env file found and loaded ✅')
-    else:
-        raise FileNotFoundError("Warning: .env file not found!")
+    ## if os.path.exists(dotenv_path):
+        ## load_dotenv(dotenv_path, override=True)
+        ## print('.env file found and loaded ✅')
+    ## else:
+        ## raise FileNotFoundError("Warning: .env file not found!")
     
-    username = os.getenv('DAGSHUB_USERNAME')
-    token = os.getenv('DAGSHUB_KEY')
+    ## username = os.getenv('DAGSHUB_USERNAME')
+    ## token = os.getenv('DAGSHUB_KEY')
     
-    if not username or not token:
-        raise ValueError("DAGSHUB_USERNAME or DAGSHUB_KEY not set in .env")
+    ## if not username or not token:
+        ## raise ValueError("DAGSHUB_USERNAME or DAGSHUB_KEY not set in .env")
     
-    print(f"Loaded credentials - Username: {username}")
-    return username, token
+    ## print(f"Loaded credentials - Username: {username}")
+    ## return username, token
 
 def get_best_model():
     """
@@ -105,122 +111,152 @@ def dvc_push(repo_root):
     subprocess.run(['git', 'push'], cwd=repo_root, check=True)
     print("Pushed dvc changes to git ✅")
 
-def add_or_modify_remote_with_auth(dvc_remote, repo_root, dagshub_repo, token):
-    '''
-    Checks if remote is already there or not. 
+########################### Change 3: simplified dvc configuration considering reset per run ##########
+### add_or_modify_remote_with_auth is replaced by configure_dvc_remote ###
+## def add_or_modify_remote_with_auth(dvc_remote, repo_root, dagshub_repo, token):
+    ## '''
+    ## Checks if remote is already there or not. 
 
-    Inputs:
-        - dvc_remote: branch in dagshub
-        - repo_root: root path
-        - dagshub_repo: url of repo
+    ## Inputs:
+        ## - dvc_remote: branch in dagshub
+        ## - repo_root: root path
+        ## - dagshub_repo: url of repo
     
-    Returns: none
-    '''
-    try:
-        # Check if the remote already exists
-        result = subprocess.run(
-            ['dvc', 'remote', 'list', repo_root],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=True
-        ).stdout
+    ## Returns: none
+    ## '''
+    ## try:
+        ### Check if the remote already exists
+        ## result = subprocess.run(
+            ## ['dvc', 'remote', 'list', repo_root],
+            ## stdout=subprocess.PIPE,
+            ## 3stderr=subprocess.PIPE,
+            ## text=True,
+            ## check=True
+        ## ).stdout
 
-        # Check if correct remote and url exist
-        lines = result.splitlines()
-        remote_exists = False
-        correct_url = False
+        ### Check if correct remote and url exist
+        ## lines = result.splitlines()
+        ## remote_exists = False
+        ## correct_url = False
 
-        for line in lines:
-            name, url = line.split(maxpslit=1)
-            if name == dvc_remote:
-                remote_exists = True
-                if url == 's3://dvc':
-                    correct_url = True
+        ## for line in lines:
+            ## name, url = line.split(maxpslit=1)
+            ## if name == dvc_remote:
+                ## remote_exists = True
+                ## if url == 's3://dvc':
+                    ## correct_url = True
 
-        # case remote and correct url exist
-        if remote_exists and correct_url:
-            # modify endpoint
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, 'endpointurl', dagshub_repo],
-                cwd=repo_root,
-                check=True
-            )
+        ### case remote and correct url exist
+        ## if remote_exists and correct_url:
+            ### modify endpoint
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'modify', dvc_remote, 'endpointurl', dagshub_repo],
+                ## cwd=repo_root,
+                ## check=True
+            ## )
 
-            # modify authentification
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'access_key_id', token], 
-                cwd=repo_root, 
-                check=True
-            )
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'secret_access_key', token], 
-                cwd=repo_root, 
-                check=True)
+            ### modify authentification
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'modify', dvc_remote, '--local', 'access_key_id', token], 
+                ## cwd=repo_root, 
+                ## check=True
+            ## )
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'modify', dvc_remote, '--local', 'secret_access_key', token], 
+                ## cwd=repo_root, 
+                ## check=True)
 
-            print(f'Remote {dvc_remote} modified with authentification successfully.')
-        elif remote_exists and not correct_url:
-            # modify endpoint
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, 'url', 's3://dvc'],
-                cwd=repo_root,
-                check=True
-            )
+            ## print(f'Remote {dvc_remote} modified with authentification successfully.')
+        ## elif remote_exists and not correct_url:
+            ### modify endpoint
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'modify', dvc_remote, 'url', 's3://dvc'],
+                ## cwd=repo_root,
+                ## check=True
+            ## )
 
-            # modify endpoint
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, 'endpointurl', dagshub_repo],
-                cwd=repo_root,
-                check=True
-            )
+            ### modify endpoint
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'modify', dvc_remote, 'endpointurl', dagshub_repo],
+                ## cwd=repo_root,
+             ## check=True
+            ## )
 
-            # modify authentification
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'access_key_id', token], 
-                cwd=repo_root, 
-                check=True
-            )
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'secret_access_key', token], 
-                cwd=repo_root, 
-                check=True)
+            ### modify authentification
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'modify', dvc_remote, '--local', 'access_key_id', token], 
+                ## cwd=repo_root, 
+                ## check=True
+            ## )
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'modify', dvc_remote, '--local', 'secret_access_key', token], 
+                ## cwd=repo_root, 
+                ## check=True)
 
-            print(f'Remote {dvc_remote} modified (endpointurl) with authentification successfully.')
-        else:
-            # Case neither remote nor url exist or url exist but under wrong remote name
-            # modify endpoint
-            subprocess.run(
-                ['dvc', 'remote', 'add', dvc_remote, 'url', 's3://dvc'],
-                cwd=repo_root,
-                check=True
-            )
+            ## print(f'Remote {dvc_remote} modified (endpointurl) with authentification successfully.')
+        ## else:
+            ### Case neither remote nor url exist or url exist but under wrong remote name
+            ### modify endpoint
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'add', dvc_remote, 'url', 's3://dvc'],
+                ## cwd=repo_root,
+                ## check=True
+            ## )
 
-            # modify endpoint
-            subprocess.run(
-                ['dvc', 'remote', 'add', dvc_remote, 'endpointurl', dagshub_repo],
-                cwd=repo_root,
-                check=True
-            )
+            ### modify endpoint
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'add', dvc_remote, 'endpointurl', dagshub_repo],
+                ## cwd=repo_root,
+                ## check=True
+            ## )
 
-            # modify authentification
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'access_key_id', token], 
-                cwd=repo_root, 
-                check=True
-            )
-            subprocess.run(
-                ['dvc', 'remote', 'modify', dvc_remote, '--local', 'secret_access_key', token], 
-                cwd=repo_root, 
-                check=True)
+            ### modify authentification
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'modify', dvc_remote, '--local', 'access_key_id', token], 
+                ## cwd=repo_root, 
+                ## check=True
+            ## )
+            ## subprocess.run(
+                ## ['dvc', 'remote', 'modify', dvc_remote, '--local', 'secret_access_key', token], 
+                ## cwd=repo_root, 
+                ## check=True)
 
-            print(f'Remote {dvc_remote} added with authentification successfully.')
+            ## print(f'Remote {dvc_remote} added with authentification successfully.')
 
-    except subprocess.CalledProcessError as e:
-        print(f'Error during remote configuration: {e}')
-
-def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, branch="main"): 
+    ## except subprocess.CalledProcessError as e:
+        ## print(f'Error during remote configuration: {e}')
+        
+def configure_dvc_remote(repo_root, dagshub_repo, token):
     """
-    Copy the best model file into src/main/models/, create a DVC pointer file (models.dvc) and metadata.txt in the repo root, then commit and push changes.
+    Configure DVC remote with DagsHub credentials.
+    """
+    dvc_remote = "origin"
+    try:
+        subprocess.run(
+            ["dvc", "remote", "add", "--force", dvc_remote, "s3://dvc"],
+            cwd=repo_root, check=True
+        )
+        subprocess.run(
+            ["dvc", "remote", "modify", dvc_remote, "endpointurl", dagshub_repo],
+            cwd=repo_root, check=True
+        )
+        subprocess.run(
+            ["dvc", "remote", "modify", dvc_remote, "--local", "access_key_id", token],
+            cwd=repo_root, check=True
+        )
+        subprocess.run(
+            ["dvc", "remote", "modify", dvc_remote, "--local", "secret_access_key", token],
+            cwd=repo_root, check=True
+        )
+        print(f"DVC remote {dvc_remote} configured successfully")
+    except subprocess.CalledProcessError as e:
+        print(f"Error configuring DVC remote: {e}")
+        raise
+ 
+def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, branch="dev-erwin2"): #  TODO: change to 'main' for the final version
+    """
+    Copy the best model file into /models/, create a DVC pointer file (models.dvc) and metadata.txt in the repo root, then commit and push changes.
+    For testing: branch 'dev-erwin2'
     """
     repo_root = Path.cwd()
     
@@ -234,19 +270,19 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
         print(f"Error: No model.keras found at {source_model_file}. Available files: {artifact_files}")
         raise FileNotFoundError(f"No model.keras found in {model_artifact_path}/data")
     
-    dest_model_file = target_dir / "production_model.keras"
+    dest_model_file = repo_root / "production_model.keras"
     shutil.copy2(source_model_file, dest_model_file)
     print(f"Copied model to {dest_model_file}")
     
     # Track with DVC
     subprocess.run(["dvc", "add", str(dest_model_file)], cwd=repo_root, check=True)
-    dvc_file = target_dir / MODEL_DVC
+    dvc_file = repo_root / MODEL_DVC
     target_dvc_file = repo_root / MODEL_DVC
     shutil.move(dvc_file, target_dvc_file)
     print(f"Moved DVC pointer to {target_dvc_file}")
     
     # Update metadata.txt in models (file is component of production model)
-    metadata_path = repo_root / "models/metadata.txt"
+    metadata_path = repo_root / "models" / "metadata.txt"
     with open(metadata_path, "w") as f:
         f.write(str(val_accuracy))
     print(f"Updated {metadata_path} with accuracy: {val_accuracy:.4f}")
@@ -259,10 +295,12 @@ def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, 
     print("Pushed Git changes")
     
     # Configure DVC remote and push with retry
-    dvc_remote = "origin"
-    TOKEN = os.getenv('DAGSHUB_KEY')
+    ############## Change 4: update function and variable fetching from config.py ############
+    ## dvc_remote = "origin"
+    ## TOKEN = os.getenv('DAGSHUB_KEY')
 
-    add_or_modify_remote_with_auth(dvc_remote, repo_root, DAGSHUB_REPO, TOKEN)
+    ## add_or_modify_remote_with_auth(dvc_remote, repo_root, DAGSHUB_REPO, TOKEN)
+    configure_dvc_remote(repo_root, DAGSHUB_REPO, token) # Replacement
     
     try:
         dvc_push(repo_root)
@@ -284,7 +322,15 @@ def manual_upload_instructions(username, model_path, val_accuracy):
     print("===============================\n")
 
 def update_model_if_better():
-    username, token = load_environment()
+    ##################### Change 5: update function and variable fetching from config.py ############
+    ## username, token = load_environment()
+    username = DAGSHUB_USERNAME
+    token = DAGSHUB_KEY
+    
+    if not username or not token:
+        raise ValueError("DAGSHUB_USERNAME or DAGSHUB_KEY not set in config")
+    ##############################
+    
     best_model_path, best_val_accuracy, run_id = get_best_model()
     
     if not best_model_path:
