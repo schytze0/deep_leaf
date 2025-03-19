@@ -102,3 +102,4 @@ The original data stems from [Kaggle (New Plant Diseases Dataset)](https://www.k
 The admin has access to the Airflow interface, where DAGs allow regular model evaluation and training on new data.
 
 **Streamlit :**
+test
