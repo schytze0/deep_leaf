@@ -9,14 +9,15 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__API__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- scikit-learn apache-airflow-providers-docker}
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- apache-airflow-providers-docker apache-airflow-providers-ssh}
   volumes:
     - ./dockers/airflow/dags:/opt/airflow/dags
     - ./dockers/airflow/logs:/opt/airflow/logs
     - ./dockers/airflow/plugins:/opt/airflow/plugins
+    - .:/app # to enable git push from host
     - /var/run/docker.sock:/var/run/docker.sock  # For DockerOperator
-    - ./data:/app/data  # Mount data for FastAPI container
-    - ./models:/app/models  # Mount models directory
+    - ./data:/app/data  # Mount data for FastAPI container but covered by .:/app
+    - ./models:/app/models  # Mount models directory but covered by .:/app
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
   depends_on:
     redis:
@@ -72,7 +73,7 @@ services:
       context: .
       dockerfile: dockers/mlflow/Dockerfile
     ports:
-      - 5000:5000
+      - 5001:5001
     volumes:
       - ./mlflow/artifacts:/app/mlflow/artifacts
       - ./models:/app/models
@@ -86,7 +87,7 @@ services:
     # environment:
     #  - DAGSHUB_USERNAME=${DAGSHUB_USERNAME}
     #  - DAGSHUB_KEY=${DAGSHUB_KEY}
-    #  - MLFLOW_TRACKING_URL=http://mlflow:5000
+    #  - MLFLOW_TRACKING_URL=http://mlflow:5001
     #  - MLFLOW_EXPERIMENT_NAME=Plant_Classification_Experiment
     #  - MLFLOW_TRACKING_USERNAME: "your_dagshub_username"  # to be replaced with actual value
     #  - MLFLOW_TRACKING_PASSWORD: "your_dagshub_token"  # to be replaced with actual value
