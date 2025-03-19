@@ -14,7 +14,7 @@ from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, MLFLOW_TRA
 from src.model import build_vgg16_model
 from src.helpers import load_tfrecord_data
 from src.prod_model_select import update_model_if_better
-from src.data_loader import load_data
+from src.data_loader import create_data
 
 # new class F1-Score
 # F1 score to get better reporting
@@ -237,7 +237,7 @@ def train_model():
     print('Training completed. ✅')
 
 if __name__ == '__main__':
-    load_data()
+    create_data()
     train_model()
     result = update_model_if_better()
     print(f'Model management result: {result}')

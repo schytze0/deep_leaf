@@ -23,7 +23,7 @@ def read_progress(progress_file):
             return json.load(f)['current_subset']
     return 0
 
-def load_data():
+def create_data():
     raw_data_dir = os.path.join('data', 'raw')
     training_data_dir = os.path.join('data', 'training')
     progress_file = os.path.join('merge_progress.json')
@@ -40,9 +40,9 @@ def load_data():
         merge_tfrecords(train_files, os.path.join(training_data_dir, 'train.tfrecord'))
         merge_tfrecords(valid_files, os.path.join(training_data_dir, 'valid.tfrecord'))
         update_progress(progress_file, next_subset)
-        print(f"Merged subsets 1 to {next_subset} for both train and valid datasets.")
+        print(f"Merged subsets 1 to {next_subset} for both train and valid datasets. ✅")
     else:
-        print("No new subsets to add.")
+        print("No new subsets to add. ✅")
 
 if __name__ == "__main__":
-    load_data()
+    create_data()
