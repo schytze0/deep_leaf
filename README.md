@@ -2,9 +2,9 @@
 
 ## 📌 Overview
 **Deep Leaf** is a deep learning-based **image classification pipeline** for detecting plant diseases using **Transfer Learning (VGG16)**. It follows **MLOps best practices**, enabling:
-- **Airflow orchestration**
-- **MLflow tracking**
 - **FastAPI access**
+- **MLflow tracking**
+- **Airflow orchestration**
 - **CI/CD with Github**
 
 ## Context??
@@ -29,8 +29,13 @@ There are some helper files:
 ├── README.md
 ├── app
 │   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── __init__.cpython-38.pyc
+│   │   ├── main.cpython-311.pyc
+│   │   └── main.cpython-38.pyc
 │   └── main.py
-├── architecture.excalidraw
+├── architecture.excalidraw.png
 ├── data
 │   ├── raw
 │   │   ├── train_subset1.tfrecord
@@ -38,40 +43,84 @@ There are some helper files:
 │   │   ├── train_subset10.tfrecord
 │   │   ├── valid_subset1.tfrecord
 │   │   ├── ...
-│   │   ├── valid_subset10.tfrecord
+│   │   └── valid_subset10.tfrecord
+│   ├── test
+│   │   ├── AppleCedarRust1.JPG
+│   │   ├── ..
+│   │   ├── AppleCedarRust4.JPG
+│   │   ├── AppleScab1.JPG
+│   │   ├── AppleScab2.JPG
+│   │   ├── AppleScab3.JPG
+│   │   ├── CornCommonRust1.JPG
+│   │   ├── CornCommonRust2.JPG
+│   │   ├── CornCommonRust3.JPG
+│   │   ├── PotatoEarlyBlight1.JPG
+│   │   ├── ...
+│   │   ├── PotatoEarlyBlight5.JPG
+│   │   ├── PotatoHealthy1.JPG
+│   │   ├── PotatoHealthy2.JPG
+│   │   ├── TomatoEarlyBlight1.JPG
+│   │   ├── ...
+│   │   ├── TomatoEarlyBlight6.JPG
+│   │   ├── TomatoHealthy1.JPG
+│   │   ├── ...
+│   │   ├── TomatoHealthy4.JPG
+│   │   ├── TomatoYellowCurlVirus1.JPG
+│   │   ├── ...
+│   │   └── TomatoYellowCurlVirus6.JPG
 │   └── training
 │       ├── train.tfrecord
 │       └── valid.tfrecord
 ├── data.dvc
+├── docker-compose.yaml
+├── dockers
+│   ├── airflow
+│   │   ├── dags
+│   │   ├── logs
+│   │   │   ├── dag_processor_manager
+│   │   │   │   └── dag_processor_manager.log
+│   │   │   └── scheduler
+│   │   │       ├── 2025-03-18
+│   │   │       └── latest -> 2025-03-18
+│   │   └── plugins
+│   ├── fastapi
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   └── mlflow
+│       └── Dockerfile
 ├── logs
 │   ├── history_20250213_084609.json
-│   ├── ...
-│   └── history_20250310_201801.json
+│   └── ...
 ├── merge_progress.json
 ├── mlflow
-│   ├── mlflow_data/
-│   ├── mlflow_db/
-│   └── Dockerfile
+│   └── artifacts
+│       └── ...
 ├── models
 │   ├── metadata.txt
 │   └── production_model.keras
 ├── production_model.keras.dvc
 ├── requirements.txt
-├── requirements-mac.txt
+├── requirements_mac.txt
+├── requirements_wsl2.txt
 ├── setup.py
 ├── src
 │   ├── __init__.py
+│   ├── __pycache__
 │   ├── config.py
 │   ├── data_loader.py
 │   ├── helpers.py
+│   ├── local_dagshub
+│   │   ├── data_loader.py
+│   │   ├── prod_model_select_mlflow_dagshub.py
+│   │   └── train_mlflow_dagshub.py
 │   ├── model.py
 │   ├── predict.py
 │   ├── prod_model_select.py
-│   ├── prod_model_select_mlflow_dagshub.py (old version for MLflow on dagshub)
+│   ├── prod_model_select_erwin.py
 │   ├── raw_data_split.py
 │   ├── test_config.py
-│   ├── train_mlflow_dagshub.py (old version for MLflow on dagshub)
 │   ├── train.py
+│   ├── train_erwin.py
 │   ├── trials.py
 │   └── utils.py
 ├── temp
@@ -91,14 +140,14 @@ The original data stems from [Kaggle (New Plant Diseases Dataset)](https://www.k
 
 ## Application Operation
 
-**APIs :**
+**FastAPI:**
 
-**Description adding at the end** 
+*Description*
 
-**Dagshub :**
+**MLflow:**
+We created an independent container to run MLflow. This container saves artifacts and metrics and is linked to local volumes so that data is not lost after shutting down the container. 
 
 **Airflow :**
 
-The admin has access to the Airflow interface, where DAGs allow regular model evaluation and training on new data.
+*Description*
 
-**Streamlit :**

@@ -1,9 +1,5 @@
-fastapi
-uvicorn
-httpx
-scikit-learn
-xgboost
-tensorflow>=2.8
+python-dotenv
+# tensorflow>=2.8
 numpy
 pandas
 matplotlib
@@ -13,24 +9,32 @@ json5
 tensorflow
 tqdm
 mlflow
-docker
-kubernetes
-prometheus_client
-grafana-client
-apache-airflow
-celery
-redis
-sqlalchemy
-loguru
-pytest
-scipy
-seaborn
-plotly
-python-dotenv
-pathlib
-dvc
+fastapi
+uvicorn
+tenacity
+python-multipart
 setuptools
 -e . # install src/ as package
 pytest
 httpx
 requests
+pathlib
+# for orchestration
+celery
+redis
+apache-airflow
+dvc
+dvc[s3]
+
+# Are the following really needed?
+scikit-learn
+xgboost
+docker
+kubernetes
+prometheus_client
+grafana-client
+sqlalchemy # ???
+loguru # ???
+seaborn
+scipy
+plotly

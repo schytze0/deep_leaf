@@ -71,8 +71,9 @@ class MLFlowLogger(callbacks.Callback):
         self.final_val_accuracy = 0.0
         self.final_val_f1_score = 0.0
         self.best_epoch = 0
-        self.final_val_accuracy = 0.0
-        self.final_val_f1_score = 0.0
+        # DEBUG(Phil): doubled therefore, outcommented
+        # self.final_val_accuracy = 0.0
+        # self.final_val_f1_score = 0.0
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
@@ -101,8 +102,11 @@ class MLFlowLogger(callbacks.Callback):
     def on_train_end(self, logs=None):
         logs = logs or {}
         try:
-            self.final_val_accuracy = logs.get('val_accuracy', self.final_val_accuracy)
-            self.final_val_f1_score = logs.get('val_f1_score', self.final_val_f1_score)
+            # DEBUG(Phil): you don't need self.final_val_accuracy twice
+            # self.final_val_accuracy = logs.get('val_accuracy', self.final_val_accuracy)
+            # self.final_val_f1_score = logs.get('val_f1_score', self.final_val_f1_score)
+            self.final_val_accuracy = logs.get("val_accuracy")
+            self.final_val_f1_score = logs.get("val_f1_score")
             mlflow.log_metric('final_val_accuracy', self.final_val_accuracy)
             mlflow.log_metric('final_val_f1_score', self.final_val_f1_score)
             print(f'Best Validation Accuracy: {self.best_val_accuracy:.4f}')
@@ -177,13 +181,13 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         # Extract hostname from MLFLOW_TRACKING_URL
         from urllib.parse import urlparse
         hostname = urlparse(MLFLOW_TRACKING_URL).hostname
-        port = urlparse(MLFLOW_TRACKING_URL).port or 5000
+        port = urlparse(MLFLOW_TRACKING_URL).port or 5001
         s.connect((hostname, port))
         s.close()
         print(f"MLflow server at {hostname}:{port} is reachable ✅")
     except Exception as e:
-        print(f"WARNING: Cannot connect to MLflow server: {e}")
-        print(f"MLflow tracking may not work correctly.")
+        print(f"WARN: Cannot connect to MLflow server: {e}")
+        print("MLflow tracking may not work correctly.")
     ########################################################################
     
     mlflow_uri = mlflow.get_tracking_uri()  # debug
@@ -203,10 +207,10 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         mlflow.log_param('num_classes', NUM_CLASSES)
         mlflow.log_param('input_shape', str((224, 224, 3)))
         print("Parameters logged successfully")  # debug
-    
+
         # new insertion
-        # TODO: Probably this could be part of the api, the path to the training data?
-        train_data, _ = load_tfrecord_data(dataset_path)
+        # DEBUG(Phil): Correct dataloading: data/training/train.tfrecord // data/training/valid.tfrecord
+        train_data, _ = load_tfrecord_data('data/raw/train_subset6.tfrecord')
         print('Training data loaded ✅')
 
         val_data, _ = load_tfrecord_data('data/raw/valid_subset6.tfrecord')
@@ -227,13 +231,14 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         print('Model built ✅')
 
         # logging in mlflow
-        # INFO: Starting MLflow
+        # Starting MLflow
         mlflow_logger = MLFlowLogger()
         print('MLflow logger started ✅')
         
         ####################### debug before model fit1 ################
         print("Testing MLflow logging before model.fit1...")
         try:
+            # DEBUG(Phil): What is the intent for this? the value is not really descriptive
             mlflow.log_param("test_before_training", "value")
             print("MLflow logging before training successful ✅")
         except Exception as e:
@@ -251,6 +256,7 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         ####################### debug after model fit1 ################
         print("Testing MLflow logging after model.fit1...")
         try:
+            # DEBUG(Phil): What is the intent for this? the value is not really descriptive
             mlflow.log_param("test_after_training", "value")
             print("MLflow logging after training successful ✅")
         except Exception as e:
@@ -285,6 +291,7 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         ####################### debug before model fit2 ################
         print("Testing MLflow logging before model.fit2...")
         try:
+            # DEBUG(Phil): What is the intent for this? the value is not really descriptive
             mlflow.log_param("test_before_training", "value")
             print("MLflow logging before training successful ✅")
         except Exception as e:
@@ -302,6 +309,7 @@ def train_model(dataset_path: str = 'data/raw/train_subset6.tfrecord'):
         ####################### debug after model fit2 ################
         print("Testing MLflow logging after model.fit2...")
         try:
+            # DEBUG(Phil): What is the intent for this? the value is not really descriptive
             mlflow.log_param("test_after_training", "value")
             print("MLflow logging after training successful ✅")
         except Exception as e:

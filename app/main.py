@@ -3,10 +3,14 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 
 # Imports from existing scripts:
-from src.data_loader import load_data # import the data from data_loader.py
-from src.train_mlflow_dagshub import train_model  # import train_model function from train.py
-from src.predict import predict_single_image  # import predict_single_image function from predict.py
-from src.prod_model_select_mlflow_dagshub import update_model_if_better # import the prod_model_select from the py file
+from src.data_loader import load_data 
+from src.train import train_model  
+from src.predict import predict_single_image 
+from src.prod_model_select import update_model_if_better
+
+# here are the links to the files Erwin prepared
+# from src.train_mlflow_dagshub import train_model  # import train_model function from train.py
+# from src.prod_model_select_mlflow_dagshub import update_model_if_better # import the prod_model_select from the py file
 
 app = FastAPI()
 
@@ -27,7 +31,7 @@ async def train_model_endpoint(request: TrainRequest):
 
     try:
         load_data() # load data or merge new subsets
-        train_model(dataset_path=request.dataset_path) # train the model, which we can also leave this blank if want no argument to pass
+        train_model() 
         result = update_model_if_better() # update the model if it’s better (promote to production)
 
         return {

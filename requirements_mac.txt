@@ -6,8 +6,7 @@ matplotlib
 Pillow
 kagglehub
 json5
-tensorflow-metal
-tensorflow-macos
+tensorflow
 tqdm
 mlflow
 fastapi
@@ -19,3 +18,10 @@ setuptools
 pytest
 httpx
 requests
+pathlib
+# for orchestration
+celery
+redis
+apache-airflow
+dvc
+dvc[s3]
