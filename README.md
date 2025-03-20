@@ -141,40 +141,40 @@ The original data stems from [Kaggle (New Plant Diseases Dataset)](https://www.k
 
 *Description*
 
-## MLflow
+### MLflow
 This project integrates MLflow to track model training, log hyperparameters, and store artifacts for versioning and reproducibility.
 
 1. Tracking and Logging
 
 During training, MLflow logs:
-	•	Metrics: Training loss, accuracy, F1-score, validation loss, validation accuracy, and validation F1-score for each epoch.
-	•	Hyperparameters: Model type (VGG16), number of epochs, batch size, input shape, and number of classes.
-	•	Artifacts: The trained model is saved using mlflow.keras.log_model() for reproducibility.
+- Metrics: Training loss, accuracy, F1-score, validation loss, validation accuracy, and validation F1-score for each epoch.
+- Hyperparameters: Model type (VGG16), number of epochs, batch size, input shape, and number of classes.
+- Artifacts: The trained model is saved using mlflow.keras.log_model() for reproducibility.
 
 2. Experiment Setup
 
 Before training starts, MLflow:
-	•	Sets the tracking URI from environment variables (MLFLOW_TRACKING_URI).
-	•	Defines an experiment name (MLFLOW_EXPERIMENT_NAME).
-	•	Initializes default logging for hyperparameters.
+- Sets the tracking URI from environment variables (MLFLOW_TRACKING_URI).
+- Defines an experiment name (MLFLOW_EXPERIMENT_NAME).
+- Initializes default logging for hyperparameters.
 
 3. Logging During Training
 
 A custom callback (MLFlowLogger) logs training metrics at the end of each epoch:
-	•	Tracks best validation accuracy and best F1-score across epochs.
-	•	Logs final validation metrics after training.
+- Tracks best validation accuracy and best F1-score across epochs.
+- Logs final validation metrics after training.
 
 4. Model Storage & Comparison
-	•	The trained model is saved in MLflow’s model registry.
-	•	The current model is stored locally (temp/current_model.keras) for comparison with previous models.
+- The trained model is saved in MLflow’s model registry.
+- The current model is stored locally (temp/current_model.keras) for comparison with previous models.
 
-5. Reproducibility
+6. Reproducibility
 
 The training history (accuracy, F1-score, loss) is saved as a JSON file, ensuring results can be analyzed later.
 
 MLflow is set up in a container running the tracking server. We use PostgreSQL database (mlflow-postgres) as backend for tracking experiment metadata. The container stores artifacts in `/app/mflow/artifacts/` which is mounted from the host machine. Access is given via port `5001`.
 
-## Airflow
+### Airflow
 
 *Description*
 
