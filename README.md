@@ -137,11 +137,11 @@ The original data stems from [Kaggle (New Plant Diseases Dataset)](https://www.k
 
 ## Application Operation
 
-**FastAPI:**
+### FastAPI
 
 *Description*
 
-**MLflow:**
+## MLflow
 This project integrates MLflow to track model training, log hyperparameters, and store artifacts for versioning and reproducibility.
 
 1. Tracking and Logging
@@ -174,7 +174,7 @@ The training history (accuracy, F1-score, loss) is saved as a JSON file, ensurin
 
 MLflow is set up in a container running the tracking server. We use PostgreSQL database (mlflow-postgres) as backend for tracking experiment metadata. The container stores artifacts in `/app/mflow/artifacts/` which is mounted from the host machine. Access is given via port `5001`.
 
-**Airflow :**
+## Airflow
 
 *Description*
 
