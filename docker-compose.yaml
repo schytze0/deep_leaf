@@ -9,7 +9,8 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__API__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- scikit-learn apache-airflow-providers-docker}
+    # _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- scikit-learn apache-airflow-providers-docker}
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- apache-airflow-providers-docker apache-airflow-providers-ssh}
   volumes:
     - ./dockers/airflow/dags:/opt/airflow/dags
     - ./dockers/airflow/logs:/opt/airflow/logs
@@ -72,7 +73,7 @@ services:
       context: .
       dockerfile: dockers/mlflow/Dockerfile
     ports:
-      - 5000:5000
+      - 5001:5001
     volumes:
       - ./mlflow/artifacts:/app/mlflow/artifacts
       - ./models:/app/models
@@ -86,7 +87,7 @@ services:
     # environment:
     #  - DAGSHUB_USERNAME=${DAGSHUB_USERNAME}
     #  - DAGSHUB_KEY=${DAGSHUB_KEY}
-    #  - MLFLOW_TRACKING_URL=http://mlflow:5000
+    #  - MLFLOW_TRACKING_URL=http://mlflow:5001
     #  - MLFLOW_EXPERIMENT_NAME=Plant_Classification_Experiment
     #  - MLFLOW_TRACKING_USERNAME: "your_dagshub_username"  # to be replaced with actual value
     #  - MLFLOW_TRACKING_PASSWORD: "your_dagshub_token"  # to be replaced with actual value
@@ -104,9 +105,13 @@ services:
       - ./logs:/app/logs
       - ./temp:/app/temp
       - .:/app
+      - ./mlflow/artifacts:/app/mlflow/artifacts
       - ./.env:/app/.env  # For testing with .env
     depends_on:
       - mlflow
+    # INFO (Phil): I think this is necessary
+    environment:
+    - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
     # Later, when running on 'main': uncomment for production without .env
     # environment:
     #   - DAGSHUB_USERNAME=your_username  # to be replaced with actual value

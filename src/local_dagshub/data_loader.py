@@ -7,6 +7,11 @@ import json
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.get_logger().setLevel('ERROR')
 
+# Get the absolute path of the script
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Get the project root directory 
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+
 def merge_tfrecords(input_files, output_file):
     with tf.io.TFRecordWriter(output_file) as writer:
         for input_file in input_files:
@@ -23,10 +28,10 @@ def read_progress(progress_file):
             return json.load(f)['current_subset']
     return 0
 
-def create_data():
-    raw_data_dir = os.path.join('data', 'raw')
-    training_data_dir = os.path.join('data', 'training')
-    progress_file = os.path.join('merge_progress.json')
+def load_data():
+    raw_data_dir = os.path.join(PROJECT_ROOT, 'data', 'raw')
+    training_data_dir = os.path.join(PROJECT_ROOT, 'data', 'training')
+    progress_file = os.path.join(PROJECT_ROOT, 'merge_progress.json')
 
     os.makedirs(training_data_dir, exist_ok=True)
 
@@ -40,9 +45,9 @@ def create_data():
         merge_tfrecords(train_files, os.path.join(training_data_dir, 'train.tfrecord'))
         merge_tfrecords(valid_files, os.path.join(training_data_dir, 'valid.tfrecord'))
         update_progress(progress_file, next_subset)
-        print(f"Merged subsets 1 to {next_subset} for both train and valid datasets. ✅")
+        print(f"Merged subsets 1 to {next_subset} for both train and valid datasets.")
     else:
-        print("No new subsets to add. ✅")
+        print("No new subsets to add.")
 
 if __name__ == "__main__":
-    create_data()
+    load_data()
