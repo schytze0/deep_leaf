@@ -3,7 +3,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 
 # Imports from existing scripts:
-from src.data_loader import load_data 
+from src.data_loader import create_data 
 from src.train import train_model  
 from src.predict import predict_single_image 
 from src.prod_model_select import update_model_if_better
@@ -30,7 +30,7 @@ async def train_model_endpoint(request: TrainRequest):
     # 3) Checks if the newly trained model is better"
 
     try:
-        load_data() # load data or merge new subsets
+        create_data() # load data or merge new subsets
         train_model() 
         result = update_model_if_better() # update the model if it’s better (promote to production)
 
