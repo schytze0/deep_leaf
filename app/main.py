@@ -40,8 +40,32 @@ async def train_model_endpoint(request: TrainRequest):
 # Define /predict Endpoint that takes in an uploaded image, processes it and returns the predicted class label.
 @app.post("/predict/")
 async def predict_endpoint(file: UploadFile = File(...)):
+    # Example threshold: 5 MB
+    MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+    VALID_EXTENSIONS = {"jpg", "jpeg", "png"}
+
+    # Check file extension
+    filename = file.filename
+    if not filename:
+        raise HTTPException(status_code=400, detail="No file uploaded.")
+    extension = filename.split(".")[-1].lower()
+    if extension not in VALID_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type: {extension}. Allowed: {VALID_EXTENSIONS}"
+        )
+
+    # Check file size
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413, 
+            detail=f"File size exceeds {MAX_FILE_SIZE} bytes limit."
+        )
+    # Reset the stream, so predict_single_image can read from the beginning
+    await file.seek(0)
+
     try:
-    # Pass the entire UploadFile object, matching predict_single_image in predict.py
         prediction = predict_single_image(file)
         return {"prediction": prediction}
     except Exception as e:
