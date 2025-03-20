@@ -5,46 +5,56 @@ from app.main import app
 
 client = TestClient(app)
 
-@pytest.fixture
-def fake_image_jpg(tmp_path):
-    """Create a small dummy .jpg file for valid testing."""
-    file_path = tmp_path / "test.jpg"
-    with open(file_path, "wb") as f:
-        f.write(b"\xFF\xD8\xFF")  # minimal JPEG header bytes
-    return file_path
+def test_no_file_uploaded():
+    """
+    Scenario 1: No file is uploaded at all.
+    The endpoint should return a 400 with "No file uploaded."
+    """
+    response = client.post("/predict/")
+    assert response.status_code == 400
+    assert "No file uploaded" in response.text
 
-@pytest.fixture
-def fake_image_png(tmp_path):
-    """Create a small dummy .png file for valid testing."""
-    file_path = tmp_path / "test.png"
-    with open(file_path, "wb") as f:
-        f.write(b"\x89PNG\r\n\x1a\n")  # minimal PNG header bytes
-    return file_path
-
-def test_invalid_extension(tmp_path):
-    # Create a dummy .txt file
-    file_path = tmp_path / "test.txt"
-    with open(file_path, "w") as f:
-        f.write("Hello, world!")
-
-    with open(file_path, "rb") as file:
-        response = client.post("/predict/", files={"file": ("test.txt", file, "text/plain")})
+def test_invalid_extension():
+    """
+    Scenario 2: Invalid file extension. 
+    The endpoint checks extension and should return 400 if not jpg/jpeg/png.
+    """
+    file_data = b"Invalid content for testing extension"
+    files = {"file": ("test.txt", file_data, "text/plain")}
+    response = client.post("/predict/", files=files)
     assert response.status_code == 400
     assert "Invalid file type" in response.text
 
-def test_file_too_large(tmp_path):
-    # Create a dummy large file
-    file_path = tmp_path / "test.jpg"
-    with open(file_path, "wb") as f:
-        f.write(b"\xFF\xD8\xFF" + b"a" * (6 * 1024 * 1024))  # 6MB 
-
-    with open(file_path, "rb") as file:
-        response = client.post("/predict/", files={"file": ("test.jpg", file, "image/jpeg")})
+def test_file_too_large():
+    """
+    Scenario 3: File size exceeding the 5MB threshold.
+    Should return HTTP 413 (Payload Too Large).
+    """
+    # Generate ~6MB of data
+    large_content = b"X" * (6 * 1024 * 1024)
+    files = {"file": ("big_test.jpg", large_content, "image/jpeg")}
+    response = client.post("/predict/", files=files)
     assert response.status_code == 413
     assert "exceeds" in response.text
 
-def test_valid_jpg(fake_image_jpg):
-    with open(fake_image_jpg, "rb") as file:
-        response = client.post("/predict/", files={"file": ("test.jpg", file, "image/jpeg")})
-    assert response.status_code == 200
-    assert "prediction" in response.json()
+@pytest.fixture
+def valid_jpg_fixture(tmp_path):
+    """
+    Creates a small valid .jpg file using Pillow for a 'happy path' test.
+    """
+    file_path = tmp_path / "test_valid.jpg"
+    img = Image.new("RGB", (1, 1))  # 1×1 pixel image
+    img.save(file_path, format="JPEG")
+    return file_path
+
+def test_valid_jpg(valid_jpg_fixture):
+    """
+    Scenario 4: Valid .jpg upload that should pass all checks.
+    Expects a 200 status code and a JSON response containing "prediction".
+    """
+    with open(valid_jpg_fixture, "rb") as f:
+        files = {"file": ("test_valid.jpg", f, "image/jpeg")}
+        response = client.post("/predict/", files=files)
+    assert response.status_code == 200, f"Expected 200, got {response.status_code} - {response.text}"
+    json_data = response.json()
+    assert "prediction" in json_data, f"Response JSON: {json_data}"
