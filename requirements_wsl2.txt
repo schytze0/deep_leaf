@@ -34,3 +34,4 @@ setuptools
 pytest
 httpx
 requests
+flake8
