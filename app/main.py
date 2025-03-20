@@ -1,6 +1,7 @@
 # Imports for FastAPI:
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 
 # Imports from existing scripts:
 from src.data_loader import create_data 
@@ -41,17 +42,27 @@ async def train_model_endpoint(request: TrainRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Training failed: {str(e)}')
 
-# Define /predict Endpoint that takes in an uploaded image, processes it and returns the predicted class label.
+
 @app.post("/predict/")
-async def predict_endpoint(file: UploadFile = File(...)):
+async def predict_endpoint(file: Optional[UploadFile] = File(None)):
+
+    # Endpoint that:
+    # 1) Takes in a file (with the option of giving no input)
+    # 2) Checks if the file is provided
+    # 3) Checks the file extension
+    # 4) Checks the file size
+    # 5) Does the prediction
+
+    # Check if file is provided
+    if file is None or not file.filename:
+        raise HTTPException(status_code=400, detail="No file uploaded.")
+    
     # Example threshold: 5 MB
     MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
     VALID_EXTENSIONS = {"jpg", "jpeg", "png"}
 
     # Check file extension
     filename = file.filename
-    if not filename:
-        raise HTTPException(status_code=400, detail="No file uploaded.")
     extension = filename.split(".")[-1].lower()
     if extension not in VALID_EXTENSIONS:
         raise HTTPException(
