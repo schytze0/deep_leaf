@@ -24,6 +24,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Configure DVC S3 remote
+        run: |
+          dvc remote modify origin endpointurl https://dagshub.com/schytze0/deep_leaf.s3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Pull the production model
+        run: |
+          dvc pull models/production_model.keras
+          ls -lh models
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
       - name: Run flake8
         run: |
           flake8 --exclude=.env,.github --max-line-length=120 .
