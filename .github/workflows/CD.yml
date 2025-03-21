@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint-test:
+  lint-test-build-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -48,7 +48,7 @@ jobs:
         run: |
           pytest --maxfail=1 --disable-warnings -v
 
-      - name: Build Docker image with docker-compose (only fast-api service)
+      - name: Build Docker image with docker-compose (only fastapi service)
         run: |
           docker compose build fastapi-app
 
@@ -69,7 +69,7 @@ jobs:
         run: |
           echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: Tag & push FastAPI image to DockerHub
+      - name: Tag & push fastapi image to DockerHub
         run: |
           docker tag fastapi-app:latest ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest

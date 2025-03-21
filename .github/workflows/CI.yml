@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint-test:
+  lint-test-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -48,13 +48,7 @@ jobs:
         run: |
           pytest --maxfail=1 --disable-warnings -v
 
-      # - name: Check Docker and Compose versions
-      #   run: |
-      #     docker --version
-      #     docker compose version || echo "docker compose not found"
-      #     docker-compose --version || echo "docker-compose not found"
-
-      - name: Build Docker image with docker-compose (only fast-api service)
+      - name: Build Docker image with docker-compose (only fastapi service)
         run: |
           docker compose build fastapi-app
 
