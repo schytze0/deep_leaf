@@ -1,5 +1,5 @@
 python-dotenv
-tensorflow>=2.8
+tensorflow
 numpy
 pandas
 matplotlib
@@ -21,3 +21,5 @@ flake8
 apache-airflow
 celery
 redis
+dvc
+dvc[s3]
