@@ -12,10 +12,10 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9' 
 
@@ -31,7 +31,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Pull the production model
+      - name: Pull the production model and train.tfrecord file
         run: |
           dvc pull models/production_model.keras
           dvc pull data/training/train.tfrecord
@@ -47,3 +47,20 @@ jobs:
       - name: Run tests with pytest
         run: |
           pytest --maxfail=1 --disable-warnings -v
+
+      - name: Build Docker image with docker-compose (only fast-api service)
+        run: |
+          docker-compose build fastapi-app
+
+      - name: Launch fastapi container
+        run: |
+          docker-compose up -d fastapi-app
+          sleep 10 # wait 10 seconds for container to start
+
+      - name: Check API health 
+        run: |
+          curl --fail http://localhost:8001/ || (echo "API not responding" && exit 1)
+
+      - name: Stop container
+        if: always()
+        run: docker-compose down
