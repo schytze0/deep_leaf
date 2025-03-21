@@ -48,19 +48,25 @@ jobs:
         run: |
           pytest --maxfail=1 --disable-warnings -v
 
-      - name: Build Docker image with docker-compose (only fast-api service)
+      - name: Check Docker and Compose versions
         run: |
-          docker-compose build fastapi-app
+          docker --version
+          docker compose version || echo "docker compose not found"
+          docker-compose --version || echo "docker-compose not found"
 
-      - name: Launch fastapi container
-        run: |
-          docker-compose up -d fastapi-app
-          sleep 10 # wait 10 seconds for container to start
+      # - name: Build Docker image with docker-compose (only fast-api service)
+      #   run: |
+      #     docker-compose build fastapi-app
 
-      - name: Check API health 
-        run: |
-          curl --fail http://localhost:8001/ || (echo "API not responding" && exit 1)
+      # - name: Launch fastapi container
+      #   run: |
+      #     docker-compose up -d fastapi-app
+      #     sleep 10 # wait 10 seconds for container to start
 
-      - name: Stop container
-        if: always()
-        run: docker-compose down
+      # - name: Check API health 
+      #   run: |
+      #     curl --fail http://localhost:8001/ || (echo "API not responding" && exit 1)
+
+      # - name: Stop container
+      #   if: always()
+      #   run: docker-compose down
