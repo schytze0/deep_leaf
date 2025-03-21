@@ -71,5 +71,5 @@ jobs:
 
       - name: Tag & push FastAPI image to DockerHub
         run: |
-          docker tag fastapi-app:latest ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf/fastapi-app:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf/fastapi-app:latest
+          docker tag fastapi-app:latest ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
