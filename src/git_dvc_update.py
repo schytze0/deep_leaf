@@ -19,11 +19,27 @@ REPO_ROOT = Path(__file__).parent.parent
 load_dotenv(REPO_ROOT / ".env")
 # Use CLONE_DIR from .env if set, else default to dynamic root
 CLONE_DIR = Path(os.getenv('CLONE_DIR', REPO_ROOT))
-BRANCH_NAME = os.getenv('GIT_BRANCH', 'dev-erwin2')
+
+def get_current_branch():
+    try:
+        # This returns "HEAD" in a detached head state, so check for that.
+        result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        branch = result.stdout.strip()
+        return branch if branch != 'HEAD' else None
+    except Exception:
+        return None
+
+BRANCH_NAME = os.getenv('GIT_BRANCH') or get_current_branch() or 'main'
+
 
 def check_files_exist():
     """Check if production_model.keras and models/metadata.txt exist."""
-    model_path = CLONE_DIR / "production_model.keras"  # keep the prod_model in the root (current state)
+    model_path = CLONE_DIR / "model" / "production_model.keras"  # keep the prod_model in the root (current state)
     metadata_path = CLONE_DIR / "models" / "metadata.txt"
     
     model_exists = model_path.exists()
@@ -65,7 +81,7 @@ def git_push():
             run_command(['git', 'fetch', 'origin', BRANCH_NAME], check=True)
             # Get the list of files we care about
             files_to_checkout = []
-            dvc_file = CLONE_DIR / "production_model.keras.dvc"
+            dvc_file = CLONE_DIR / "models" / "production_model.keras.dvc"
             metadata_path = CLONE_DIR / "models" / "metadata.txt"
             if dvc_file.exists():
                 files_to_checkout.append(str(dvc_file))
@@ -138,8 +154,8 @@ def main():
             return
         
         # Stage model with DVC if it exists
-        model_path = CLONE_DIR / "production_model.keras"
-        dvc_file = CLONE_DIR / "production_model.keras.dvc"
+        model_path = CLONE_DIR / "models" / "production_model.keras"
+        dvc_file = CLONE_DIR / "models" / "production_model.keras.dvc"
         if model_exists:
             run_command(['dvc', 'add', str(model_path)], check=True)
             print(f"Added {model_path} to DVC")
