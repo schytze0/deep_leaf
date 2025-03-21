@@ -34,7 +34,7 @@ jobs:
       - name: Pull the production model
         run: |
           dvc pull models/production_model.keras
-          ls -lh models
+          dvc pull data/training/train.tfrecord
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
