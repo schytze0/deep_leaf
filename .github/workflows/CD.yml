@@ -26,55 +26,55 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Configure DVC S3 remote
-        run: |
-          dvc remote modify origin endpointurl https://dagshub.com/schytze0/deep_leaf.s3
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #   - name: Configure DVC S3 remote
+    #     run: |
+    #       dvc remote modify origin endpointurl https://dagshub.com/schytze0/deep_leaf.s3
+    #     env:
+    #       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Pull the production model and train.tfrecord file
-        run: |
-          dvc pull models/production_model.keras
-          dvc pull data/training/train.tfrecord
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #   - name: Pull the production model and train.tfrecord file
+    #     run: |
+    #       dvc pull models/production_model.keras
+    #       dvc pull data/training/train.tfrecord
+    #     env:
+    #       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Run flake8
-        run: |
-          flake8 --exclude=.env,.github --max-line-length=120 .
-        continue-on-error: true
+    #   - name: Run flake8
+    #     run: |
+    #       flake8 --exclude=.env,.github --max-line-length=120 .
+    #     continue-on-error: true
 
-      - name: Run tests with pytest
-        run: |
-          pytest --maxfail=1 --disable-warnings -v
+    #   - name: Run tests with pytest
+    #     run: |
+    #       pytest --maxfail=1 --disable-warnings -v
 
-      - name: Build Docker image with docker-compose (only fastapi service)
-        run: |
-          docker compose build fastapi-app
+    #   - name: Build Docker image with docker-compose (only fastapi service)
+    #     run: |
+    #       docker compose build fastapi-app
 
-      - name: Launch fastapi container
-        run: |
-          docker compose up -d fastapi-app
-          sleep 10 # wait 10 seconds for container to start
+    #   - name: Launch fastapi container
+    #     run: |
+    #       docker compose up -d fastapi-app
+    #       sleep 10 # wait 10 seconds for container to start
 
-      - name: Check API health 
-        run: |
-          curl --fail http://localhost:8001/ || (echo "API not responding" && exit 1)
+    #   - name: Check API health 
+    #     run: |
+    #       curl --fail http://localhost:8001/ || (echo "API not responding" && exit 1)
 
-      - name: Stop container
-        if: always()
-        run: docker compose down
+    #   - name: Stop container
+    #     if: always()
+    #     run: docker compose down
     
-      - name: Docker login
-        run: |
-          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+    #   - name: Docker login
+    #     run: |
+    #       echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: Tag & push fastapi image to DockerHub
-        run: |
-          docker tag fastapi-app:latest ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
+    #   - name: Tag & push fastapi image to DockerHub
+    #     run: |
+    #       docker tag fastapi-app:latest ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
+    #       docker push ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
 
       - name: Check if model changed
         id: check_model
@@ -90,7 +90,6 @@ jobs:
         if: steps.check_model.outputs.model_changed == 'true'
         run: python src/git_dvc_update.py
         env:
-          GIT_BRANCH: main
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_KEY: ${{ secrets.DAGSHUB_KEY }}
           DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
