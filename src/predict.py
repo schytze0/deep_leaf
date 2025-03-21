@@ -66,7 +66,10 @@ def get_class_labels():
         unique_labels = np.unique(class_indices)
         class_labels.update(unique_labels)
 
-    return sorted(class_labels)
+    class_labels = sorted(class_labels)
+    # cast to plain Python ints
+    class_labels = [int(x) for x in class_labels]
+    return class_labels
 
 def preprocess_image(file): # nvd06: changed from image_path to file to fit the main.yp and FastAPI setup. 
     '''
