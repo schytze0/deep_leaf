@@ -73,3 +73,22 @@ jobs:
         run: |
           docker tag fastapi-app:latest ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
+
+      - name: Check if model changed
+        id: check_model
+        run: |
+          echo "model_changed=true" >> $GITHUB_OUTPUT # artifically report that changes exist   
+        #   if git diff --quiet production_model.keras.dvc; then
+        #     echo "model_changed=false" >> $GITHUB_OUTPUT
+        #   else
+        #     echo "model_changed=true" >> $GITHUB_OUTPUT
+        #   fi
+  
+      - name: Run git_dvc_update.py if model changed
+        if: steps.check_model.outputs.model_changed == 'true'
+        run: python src/git_dvc_update.py
+        env:
+          GIT_BRANCH: main
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_KEY: ${{ secrets.DAGSHUB_KEY }}
+          DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
