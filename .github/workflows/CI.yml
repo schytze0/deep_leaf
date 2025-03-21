@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - dev-yannik
+  workflow_dispatch:
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9' 
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure DVC S3 remote
+        run: |
+          dvc remote modify origin endpointurl https://dagshub.com/schytze0/deep_leaf.s3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Pull the production model
+        run: |
+          dvc pull models/production_model.keras
+          dvc pull data/training/train.tfrecord
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Run flake8
+        run: |
+          flake8 --exclude=.env,.github --max-line-length=120 .
+        continue-on-error: true
+
+      - name: Run tests with pytest
+        run: |
+          pytest --maxfail=1 --disable-warnings -v

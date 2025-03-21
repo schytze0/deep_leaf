@@ -1,5 +1,5 @@
 python-dotenv
-tensorflow>=2.8
+tensorflow
 numpy
 pandas
 matplotlib
@@ -17,6 +17,9 @@ setuptools
 pytest
 httpx
 requests
+flake8
 apache-airflow
 celery
 redis
+dvc
+dvc[s3]

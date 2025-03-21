@@ -25,3 +25,4 @@ redis
 apache-airflow
 dvc
 dvc[s3]
+flake8
