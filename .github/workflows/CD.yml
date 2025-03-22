@@ -75,6 +75,10 @@ jobs:
     #     run: |
     #       docker tag fastapi-app:latest ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
     #       docker push ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
+    
+      - name: Configure Git to use PAT
+        run: |
+          git config --global url."https://${{ secrets.DEEPLEAF_GITHUB_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Check if model changed
         id: check_model
@@ -93,3 +97,4 @@ jobs:
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_KEY: ${{ secrets.DAGSHUB_KEY }}
           DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
+          GITHUB_PAT: ${{ secrets.DEEPLEAF_GITHUB_PAT }}
