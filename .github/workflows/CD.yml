@@ -75,21 +75,25 @@ jobs:
     #     run: |
     #       docker tag fastapi-app:latest ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
     #       docker push ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
-    
+
       - name: Configure Git to use PAT
         run: |
+          cd ${{ github.workspace }}
+          # Rewrite URLs so that any URL starting with https://github.com/ is replaced with one that embeds the PAT.
           git config --global url."https://${{ secrets.DEEPLEAF_GITHUB_PAT }}@github.com/".insteadOf "https://github.com/"
+          # Verify that the remote URL now shows the PAT in it
+          git remote -v
 
-      - name: Check if model changed
+      - name: Check if model changed (testing override)
         id: check_model
         run: |
-          echo "model_changed=true" >> $GITHUB_OUTPUT # artifically report that changes exist   
+          echo "model_changed=true" >> $GITHUB_OUTPUT  # For testing purposes
         #   if git diff --quiet production_model.keras.dvc; then
         #     echo "model_changed=false" >> $GITHUB_OUTPUT
         #   else
         #     echo "model_changed=true" >> $GITHUB_OUTPUT
         #   fi
-  
+
       - name: Run git_dvc_update.py if model changed
         if: steps.check_model.outputs.model_changed == 'true'
         run: python src/git_dvc_update.py
