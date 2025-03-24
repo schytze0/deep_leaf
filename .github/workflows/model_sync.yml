@@ -47,7 +47,7 @@ jobs:
         id: model_check
         run: |
           cd ${{ github.workspace }}
-          echo "changed=true" >> $GITHUB_OUTPUT
+          i
         #   # Adjust file paths as needed: the model pointer is in models/production_model.keras.dvc
         #   # and metadata in models/metadata.txt.
         #   if git diff --quiet models/production_model.keras.dvc models/metadata.txt; then
@@ -63,9 +63,15 @@ jobs:
           # Set Git user info for the commit.
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
+          # Stage the DVC pointer and metadata files.
           git add models/production_model.keras.dvc models/metadata.txt
-          git commit -m "Sync updated model and metadata from training"
-          git push origin ${{ github.ref_name }}
+          # Check if there are staged changes.
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync updated model and metadata from training"
+            git push origin ${{ github.ref_name }}
+          else
+            echo "No changes to commit, working tree clean."
+          fi
 
       - name: Push Model File to DVC Remote
         if: steps.model_check.outputs.changed == 'true'
