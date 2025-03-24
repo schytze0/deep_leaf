@@ -47,7 +47,7 @@ jobs:
         id: model_check
         run: |
           cd ${{ github.workspace }}
-          echo "changed=false" >> $GITHUB_OUTPUT
+          echo "changed=true" >> $GITHUB_OUTPUT
         #   # Adjust file paths as needed: the model pointer is in models/production_model.keras.dvc
         #   # and metadata in models/metadata.txt.
         #   if git diff --quiet models/production_model.keras.dvc models/metadata.txt; then
