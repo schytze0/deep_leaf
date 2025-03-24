@@ -84,6 +84,13 @@ jobs:
           # Verify that the remote URL now shows the PAT in it
           git remote -v
 
+      - name: Set remote URL explicitly using PAT
+        run: |
+          cd ${{ github.workspace }}
+          # This resets the 'origin' remote to use the PAT.
+          git remote set-url origin https://${{ secrets.DEEPLEAF_GITHUB_PAT }}@github.com/${{ github.repository }}.git
+          git remote -v
+
       - name: Check if model changed (testing override)
         id: check_model
         run: |
