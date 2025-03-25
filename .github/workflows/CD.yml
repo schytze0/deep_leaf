@@ -1,16 +1,20 @@
-name: CI
+name: CD
 
 on:
   push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  lint-test-build:
+  lint-test-build-deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -62,3 +66,12 @@ jobs:
       - name: Stop container
         if: always()
         run: docker compose down
+    
+      - name: Docker login
+        run: |
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Tag & push fastapi image to DockerHub
+        run: |
+          docker tag fastapi-app:latest ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/deepleaf-fastapi-app:latest
