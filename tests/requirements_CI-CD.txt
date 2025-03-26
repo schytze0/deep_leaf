@@ -7,6 +7,7 @@ pandas
 scikit-learn
 dvc
 dvc[s3]
+-e .
 
 # Testing and Linting Dependencies
 pytest
