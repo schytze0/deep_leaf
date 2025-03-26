@@ -5,6 +5,7 @@ tensorflow==2.12.0
 numpy
 pandas
 scikit-learn
+Pillow
 dvc
 dvc[s3]
 -e .
