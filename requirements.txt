@@ -1,5 +1,5 @@
 python-dotenv
-tensorflow==2.12.0  # pinning this because in the fastapi-app container this version is installed due to the python:3.8-slim base image
+tensorflow>=2.8
 numpy
 pandas
 matplotlib
