@@ -34,3 +34,6 @@ dist/
 # logs if they are generated at runtime
 logs/
 mlruns/
+
+# SSH keys for automated model tracking
+ssh/
