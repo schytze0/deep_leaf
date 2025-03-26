@@ -48,10 +48,17 @@ There are some helper files:
 │   ├── ...
 │   └── history_20250310_201801.json
 ├── merge_progress.json
-├── mlflow
-│   ├── mlflow_data/
-│   ├── mlflow_db/
-│   └── Dockerfile
+├── dockers
+│   ├── airflow
+│   │   ├── dags
+│   │   │   └── dag_train.py
+│   │   ├── logs
+│   │   └── plugins
+│   ├── fastapi
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   └── mlflow
+│       └── Dockerfile
 ├── models
 │   ├── metadata.txt
 │   └── production_model.keras
@@ -97,11 +104,100 @@ The original data stems from [Kaggle (New Plant Diseases Dataset)](https://www.k
 
 **Dagshub :**
 
+**Docker :**
+
+The project uses a containerized architecture with the following breakdown and features:
+
+1. Services Implemented
+- Two Postgres database services:
+    - `postgres`: for Airflow to store metadata and task information
+    - `mlflow-postgres`: for MLflow for tracking experiments
+- Redis service for communication between Airflow scheduler and workers:
+    - central communication hub for Airflow
+    - `redis`: used for Airflow Celery executor as a message broker and result backend 
+    -  runs on port 6379
+- MLflow server for experiments and tracking:
+    - mounted volumes of `mlflow` for: artifacts storage, model directory, logs and temp files
+    - depends on `mlflow-postgres` for storage
+    - exposes port 5001
+- FastAPI-app service to run all executables of the project:
+    - used to run web app services (swagger UI)
+    - mounted volumes: the entire root directory
+    - depends on MLflow service (in order to fetch artifacts and experiment related data)
+    - exposes pot 8001 (mapped 800 internally)
+- Airflow services, consists of the standard components:
+    - `airflow-webserver`: Web interface for Airflow which exposes port 8080
+    - `airflow-scheduler`: Manages DAG scheduling
+    - `airflow-worker`: Celery workers for distributed task execution
+    - `airflow-init`: Initializes Airflow database and creates default user
+    - `flower`: Celery monitoring tool which exposes port 5555
+
+2. Comunication and Dependencies
+- Airflow Components:
+    - Use `redis` as a message broker and result backend
+    - Communicate through `celery` for distributed task processing
+    - Share common configuration via `x-airflow-common`
+- MLflow and FastAPI integration:
+    - Share volumes for artifacts, models, and logs
+    - FastAPI depends on MLflow service
+    - Both use separate PostgreSQL databases
+- Database Connections:
+    - Airflow uses `postgres` database
+    - MLflow uses `mlflow-postgres` database
+    - Both databases configured with healthchecks
+- Dependencies
+    - `postgres` and `redis` must be healthy for Airflow services
+    - `mlflow-postgres` must be healthy for MLflow
+    - `mlflow` must be running for `fastapi-app`
+- Key Volumes and Mounts:
+    - Shared project root (.:/app) --> and as applicable
+    - Docker socket for DockerOperator in Airflow --> for DAG implementation
+- Configuration:
+    - Uses environment variables for flexible configuration
+    - Mounted `.env` file for testing
+    - Basic authentication for Airflow API
+- Startup and Initialization
+    - Services configured with restart policies
+    - Healthchecks ensure proper startup sequence
+    - Airflow initialization creates default user
+
+3. Docker-in-Docker for model training within Airflow
+- Using `fastapi-app` container for model training
+- Enabling running model training as a containerized Airflow task
+- Mounting the entire project repository (`.:/app`) into the container
+- Using Docker socket volume (/var/run/docker.sock) for container management
+
+
+Here is an overview:
+![Docker Compose Architecture](docker_architecture.png)
+
+
 **Airflow :**
 
-The admin has access to the Airflow interface, where DAGs allow regular model evaluation and training on new data.
+Using a DAG to run model training for the project with the following Functionality and Features
+
+1. DAG Configuration of `model_training_and_update`
+- Scheduled run daily at 3:00 PM and one active run at a time
+
+2. Task Details
+- Task ID: train_model
+- Container Configuration: 
+    - Uses the fastapi-app:latest image
+    - Executes python /app/src/train.py command
+    - Runs with bridge network mode
+    - Auto-removes container after execution
+
+3. Additional feratures
+- XCom Push: to captures stdout for logging and tracking
+
+4. Error Handling
+- Configured with 1 retry
+- 5-minute delay between retries
+
+5. General Remarks:
+- Uses DockerOperator for containerized task execution
+- Leverages Docker socket for container management
+- Enables reproducible and isolated model training workflows
+
 
 **Streamlit :**
-test
-test
-test1
