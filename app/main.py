@@ -1,34 +1,41 @@
 # Imports for FastAPI:
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from pydantic import BaseModel
 from typing import Optional
 
 # Imports from existing scripts:
 from src.data_loader import create_data 
 from src.train import train_model  
-from src.predict import predict_single_image 
+from src.predict import predict_single_image, load_trained_model, get_class_labels
 from src.prod_model_select import update_model_if_better
-
-# here are the links to the files Erwin prepared
-# from src.train_mlflow_dagshub import train_model  # import train_model function from train.py
-# from src.prod_model_select_mlflow_dagshub import update_model_if_better # import the prod_model_select from the py file
 
 app = FastAPI()
 
-class TrainRequest(BaseModel):
-    dataset_path: str
+# Global references for model and labels
+model = None
+class_labels = None
+
+@app.on_event("startup")
+def load_resources_once():
+    """
+    Load model & class labels a single time at application startup.
+    """
+    global model
+    global class_labels
+    model = load_trained_model()
+    class_labels = get_class_labels()
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Deep Leaf API!"}
 
 @app.post("/train")
-async def train_model_endpoint(request: TrainRequest):
+async def train_model_endpoint():
     
     # Endpoint that:
     # 1) Merges/loads the data subsets via load_data()
     # 2) Trains the model
-    # 3) Checks if the newly trained model is better"
+    # 3) Checks if the newly trained model is better
+    # 4) Tracks the new model with DVC and Git if performance has improved
 
     try:
         create_data() # load data or merge new subsets
