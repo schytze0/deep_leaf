@@ -34,6 +34,7 @@ jobs:
           dvc pull models/production_model.keras
           dvc pull data/training/train.tfrecord
           dvc checkout models/production_model.keras
+          ls -l ./models  # DEBUG: show content of models/ folder in Git runner
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
