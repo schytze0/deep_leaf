@@ -6,6 +6,7 @@ numpy
 pandas
 scikit-learn
 Pillow
+mlflow
 dvc
 dvc[s3]
 -e .
