@@ -8,6 +8,15 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 import subprocess 
 from pathlib import Path
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]  # Sends logs to stdout
+)
+logger = logging.getLogger(__name__)
 
 # imports from other scripts
 from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, MLFLOW_TRACKING_URL
@@ -80,8 +89,8 @@ class MLFlowLogger(callbacks.Callback):
         mlflow.log_metric('final_val_f1_score', self.final_val_f1_score)
 
         # print best values
-        print(f'Best Validation Accuracy: {self.best_val_accuracy:.4f}')
-        print(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
+        logger.info(f'Best Validation Accuracy: {self.best_val_accuracy:.4f}')
+        logger.info(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
 
 def setup_mlflow_experiment():
     mlflow.set_tracking_uri(
@@ -91,8 +100,8 @@ def setup_mlflow_experiment():
         os.getenv('MLFLOW_EXPERIMENT_NAME', 'Plant_Classification_Experiment')
     )
 
-    print(f'MLflow tracking URI set to: {os.getenv("MLFLOW_TRACKING_URI","http://mlflow:5001")}')
-    print(f'MLflow experiment set to: {os.getenv("MLFLOW_EXPERIMENT_NAME", "Plant_Classification_Experiment")}')
+    logger.info(f'MLflow tracking URI set to: {os.getenv("MLFLOW_TRACKING_URI","http://mlflow:5001")}')
+    logger.info(f'MLflow experiment set to: {os.getenv("MLFLOW_EXPERIMENT_NAME", "Plant_Classification_Experiment")}')
 
 
     # parameters for logging
@@ -138,12 +147,12 @@ def train_model():
     train_data, train_records = load_tfrecord_data(
         'data/training/train.tfrecord'
     )
-    print('Training data loaded ✅')
+    logger.info('Training data loaded ✅')
 
     val_data, val_records = load_tfrecord_data(
         'data/training/valid.tfrecord'
     )
-    print('Validation data loaded ✅')
+    logger.info('Validation data loaded ✅')
 
     input_shape = (224, 224, 3)
 
@@ -157,24 +166,24 @@ def train_model():
         loss='categorical_crossentropy',
         metrics=['accuracy', F1Score(name='f1_score')]
     )
-    print('Model built ✅')
+    logger.info('Model built ✅')
 
     # logging in mlflow
     # Starting MLflow
     mlflow_logger = MLFlowLogger()
-    print('MLflow logger started ✅')
+    logger.info('MLflow logger started ✅')
 
-    print('Training classification head...', end='\r')
+    logger.info('Training classification head...')
     history_1 = model.fit(
         train_data, 
         validation_data=val_data, 
         epochs=int(EPOCHS*0.7), 
         callbacks=[mlflow_logger]
     )
-    print('Training classification ended ✅')
+    logger.info('Training classification ended ✅')
 
     # Step 2: Fine-tune the last layers of the base model
-    print('Build fine-tuning model...', end='\r')
+    logger.info('Build fine-tuning model...')
     tf.keras.backend.clear_session()
 
     # reinitializing optimizer
@@ -186,7 +195,7 @@ def train_model():
         trainable_base=True, 
         fine_tune_layers=4
     )
-    print('Fine-tuning model built ✅')
+    logger.info('Fine-tuning model built ✅')
 
     model.compile(
         optimizer=optimizer,
@@ -194,14 +203,14 @@ def train_model():
         metrics=['accuracy', F1Score(name='f1_score')]
     )
 
-    print('Fine-tuning head...', end='\r')
+    logger.info('Fine-tuning head...')
     history_2 = model.fit(
         train_data, 
         validation_data=val_data, 
         epochs=int(EPOCHS*0.3), 
         callbacks=[mlflow_logger]
     )
-    print('Fine-tuning ended ✅')
+    logger.info('Fine-tuning ended ✅')
 
     # saving mlflow loggs
     mlflow.keras.log_model(model, 'model')
@@ -209,15 +218,15 @@ def train_model():
     # saving locally for comparison
     os.makedirs('temp', exist_ok=True)
     model.save('temp/current_model.keras')
-    print('Current model saved under temp/current_model.keras ✅')
+    logger.info('Current model saved under temp/current_model.keras ✅')
 
     # write current val_accuracy to current_accuracy.txt
     with open('temp/current_accuracy.txt', 'w') as f:
         f.write(str(mlflow_logger.final_val_accuracy))
-    print('Saved current final validation accuracy as temp/current_accuracy.txt ✅.')
+    logger.info('Saved current final validation accuracy as temp/current_accuracy.txt ✅.')
 
     mlflow.end_run()
-    print('Scores are saved with MLflow ✅.')
+    logger.info('Scores are saved with MLflow ✅.')
 
     # Combine both training histories
     history = {
@@ -234,7 +243,7 @@ def train_model():
         json.dump(history, f)
         print(f'History saved in {HISTORY_PATH} ✅.')
 
-    print('Training completed. ✅')
+    logger.info('Training completed. ✅')
 
 if __name__ == '__main__':
     create_data()

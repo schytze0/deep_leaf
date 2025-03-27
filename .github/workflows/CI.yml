@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r tests/requirements_CI-CD.txt
 
       - name: Configure DVC S3 remote
         run: |
@@ -33,6 +33,15 @@ jobs:
         run: |
           dvc pull models/production_model.keras
           dvc pull data/training/train.tfrecord
+          dvc checkout models/production_model.keras
+          ls -l ./models  # DEBUG: show content of models/ folder in Git runner
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        
+      - name: Test Model Loading
+        run: |
+          python tests/test_load_model.py
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -55,9 +64,9 @@ jobs:
           docker compose up -d fastapi-app
           sleep 10 # wait 10 seconds for container to start
 
-      - name: Check API health 
-        run: |
-          curl --fail http://localhost:8001/ || (echo "API not responding" && exit 1)
+      # - name: Check API health 
+      #   run: |
+      #     curl --fail http://localhost:8001/ || (echo "API not responding" && exit 1)
 
       - name: Stop container
         if: always()

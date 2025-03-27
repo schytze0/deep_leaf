@@ -2,6 +2,15 @@ import os
 import glob
 import tensorflow as tf
 import json
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]  # Sends logs to stdout
+)
+logger = logging.getLogger(__name__)
 
 # Disable TensorFlow logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -40,9 +49,9 @@ def create_data():
         merge_tfrecords(train_files, os.path.join(training_data_dir, 'train.tfrecord'))
         merge_tfrecords(valid_files, os.path.join(training_data_dir, 'valid.tfrecord'))
         update_progress(progress_file, next_subset)
-        print(f"Merged subsets 1 to {next_subset} for both train and valid datasets. ✅")
+        logger.info(f"Merged subsets 1 to {next_subset} for both train and valid datasets. ✅")
     else:
-        print("No new subsets to add. ✅")
+        logger.info("No new subsets to add. ✅")
 
 if __name__ == "__main__":
     create_data()

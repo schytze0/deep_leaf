@@ -1,5 +1,5 @@
 python-dotenv
-tensorflow
+tensorflow>=2.8
 numpy
 pandas
 matplotlib
