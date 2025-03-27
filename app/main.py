@@ -1,5 +1,5 @@
 # Imports for FastAPI:
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from typing import Optional
 
 # Imports from existing scripts:
@@ -10,27 +10,16 @@ from src.prod_model_select import update_model_if_better
 
 app = FastAPI()
 
-# Global references for model and labels
-model = None
-class_labels = None
-
-@app.on_event("startup")
-def load_resources_once():
-    """
-    Load model & class labels a single time at application startup.
-    """
-    global model
-    global class_labels
-    model = load_trained_model()
-    class_labels = get_class_labels()
-
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Deep Leaf API!"}
 
 @app.post("/train")
-async def train_model_endpoint():
-    
+async def train_model_endpoint(background_tasks: BackgroundTasks):
+    background_tasks.add_task(run_training)
+    return {"message": "Training started. Check back later for results."}
+
+def run_training():
     # Endpoint that:
     # 1) Merges/loads the data subsets via load_data()
     # 2) Trains the model
