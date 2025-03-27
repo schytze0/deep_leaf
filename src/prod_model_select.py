@@ -10,7 +10,7 @@ import logging
 
 # local imports
 from src.config import MODEL_DVC, DAGSHUB_REPO
-from src.model__and_data_tracking import track_model
+from src.model_and_data_tracking import track_model_and_data
 
 # Configure logging
 logging.basicConfig(

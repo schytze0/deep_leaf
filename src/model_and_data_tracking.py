@@ -32,7 +32,7 @@ def commit_changes():
     else:
         logger.info("No changes detected to commit.")
 
-def track_model():
+def track_model_and_data():
     try:
         # Configure Git identity
         configure_git_identity()
@@ -68,4 +68,4 @@ def track_model():
         raise
 
 if __name__ == '__main__':
-    track_model()
+    track_model_and_data()
