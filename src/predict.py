@@ -6,6 +6,15 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.metrics import Metric
 from io import BytesIO
 import argparse
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]  # Sends logs to stdout
+)
+logger = logging.getLogger(__name__)
 
 # user defined functions and libraries
 from src.config import MODEL_PATH, IMG_SIZE
@@ -130,7 +139,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Run predictions on the test folder by default
-    print(f'Running predictions on the test set: {args.image_path}')
+    logger.info(f'Running predictions on the test set: {args.image_path}')
     results = predict_single_image(args.image_path)
 
-    print(f'\nPredictions for Test Set: {results}')
+    logger.info(f'\nPredictions for Test Set: {results}')
