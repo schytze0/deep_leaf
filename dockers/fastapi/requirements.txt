@@ -4,7 +4,7 @@ mlflow
 scikit-learn
 pandas
 numpy
-tensorflow>=2.8  # because of using .keras model type
+tensorflow  # aligned this with all other requirements*.txt files
 pyjwt
 dvc
 python-dotenv
@@ -15,3 +15,5 @@ pytest
 httpx
 requests
 psutil
+dvc
+dvc[s3]
