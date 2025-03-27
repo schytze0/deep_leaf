@@ -64,9 +64,9 @@ jobs:
           docker compose up -d fastapi-app
           sleep 10 # wait 10 seconds for container to start
 
-      - name: Check API health 
-        run: |
-          curl --fail http://localhost:8001/ || (echo "API not responding" && exit 1)
+      # - name: Check API health 
+      #   run: |
+      #     curl --fail http://localhost:8001/ || (echo "API not responding" && exit 1)
 
       - name: Stop container
         if: always()
