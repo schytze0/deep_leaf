@@ -93,9 +93,7 @@ class MLFlowLogger(callbacks.Callback):
         logger.info(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
 
 def setup_mlflow_experiment():
-    mlflow.set_tracking_uri(
-        os.getenv('MLFLOW_TRACKING_URI','http://mlflow:5001')
-    )
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
     mlflow.set_experiment(
         os.getenv('MLFLOW_EXPERIMENT_NAME', 'Plant_Classification_Experiment')
     )
