@@ -9,6 +9,8 @@ on:
 jobs:
   lint-test-build-deploy:
     runs-on: ubuntu-latest
+    env:
+      REPO_ROOT: ${{ github.workspace }}
 
     steps:
       - name: Checkout Repository

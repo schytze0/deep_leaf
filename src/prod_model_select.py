@@ -156,7 +156,7 @@ def update_model_if_better():
         action = "Created" if not exists else "Updated"
         try:
             overwrite_existing(best_model_path, best_val_accuracy)
-            track_model()
+            track_model_and_data()
             return f"Model {action.lower()} - New accuracy: {best_val_accuracy:.4f}" + (f", Previous: {existing_accuracy:.4f}" if exists else "")
         except Exception as e:
             logger.info(f"Error during upload: {e}")

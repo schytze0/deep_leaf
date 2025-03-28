@@ -139,7 +139,40 @@ The original data stems from [Kaggle (New Plant Diseases Dataset)](https://www.k
 
 ### FastAPI
 
-*Description*
+This project provides a FastAPI-based web API. It includes endpoints for triggering model training and performing inference (predictions) on uploaded images.
+
+This API allows you to:
+1. **Train a new model** using the latest data.
+2. **Compare and promote** the newly trained model to production if it outperforms the existing one.
+3. **Predict** the class of an uploaded leaf image.
+
+The main endpoints are:
+
+- `GET /`  
+  Returns a simple welcome message to confirm the API is live.
+
+- `POST /train`  
+  Runs a **background training job** to:
+  1. Load or merge new subsets of data.
+  2. Train a new model.
+  3. Compare the new model with the production model.
+  4. If better, promote the new model and track it via DVC/Git.
+
+- `POST /predict/`  
+  Accepts an **image file** (JPG, JPEG, or PNG up to 5MB) and returns the predicted class index.
+
+#### Usage Examples
+
+Train:
+```sh
+curl -X POST http://127.0.0.1:8000/train
+``` 
+
+Predict:
+```sh
+curl -X POST "http://127.0.0.1:8000/predict/" \
+     -F "file=@path/to/local/image.jpg"
+```
 
 ### Docker
 
