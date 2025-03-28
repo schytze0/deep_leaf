@@ -8,22 +8,12 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 import subprocess 
 from pathlib import Path
-import logging
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()]  # Sends logs to stdout
-)
-logger = logging.getLogger(__name__)
 
 # imports from other scripts
-from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, MLFLOW_TRACKING_URL
+from src.config import HISTORY_PATH, EPOCHS, BATCH_SIZE, NUM_CLASSES, MLFLOW_TRACKING_URL, MLFLOW_EXPERIMENT_NAME
 from src.model import build_vgg16_model
 from src.helpers import load_tfrecord_data
 from src.prod_model_select import update_model_if_better
-from src.data_loader import create_data
 
 # new class F1-Score
 # F1 score to get better reporting
@@ -42,9 +32,29 @@ class F1Score(tf.keras.metrics.Metric):
         recall = self.recall.result()
         return 2 * ((precision * recall) / (precision + recall + tf.keras.backend.epsilon()))
 
-    def reset_state(self):
-        self.precision.reset_state()
-        self.recall.reset_state()
+    def reset_states(self):
+        self.precision.reset_states()
+        self.recall.reset_states()
+
+# Access dagshub 
+# Load environment variables from .env file
+script_dir = os.path.dirname(os.path.abspath(__file__))
+dotenv_path = os.path.join(script_dir, "..", ".env")
+
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path, override=True)
+    print('.env file found and loaded ✅')
+else:
+    print("Warning: .env file not found!")
+
+# Debugging: Print environment variables to verify they're loaded
+dagshub_username = os.getenv('DAGSHUB_USERNAME')
+dagshub_key = os.getenv('DAGSHUB_KEY')
+
+if not dagshub_username:
+    print("❌ ERROR: DAGSHUB_USERNAME is not set.")
+if not dagshub_key:
+    print("❌ ERROR: DAGSHUB_KEY is not set.")
 
 # ML Flow setup (still needs to be tested)
 class MLFlowLogger(callbacks.Callback):
@@ -89,18 +99,12 @@ class MLFlowLogger(callbacks.Callback):
         mlflow.log_metric('final_val_f1_score', self.final_val_f1_score)
 
         # print best values
-        logger.info(f'Best Validation Accuracy: {self.best_val_accuracy:.4f}')
-        logger.info(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
+        print(f'Best Validation Accuracy: {self.best_val_accuracy:.4f}')
+        print(f'Final validation accuracy: {self.final_val_accuracy:.4f}')
 
 def setup_mlflow_experiment():
-    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-    mlflow.set_experiment(
-        os.getenv('MLFLOW_EXPERIMENT_NAME', 'Plant_Classification_Experiment')
-    )
-
-    logger.info(f'MLflow tracking URI set to: {os.getenv("MLFLOW_TRACKING_URI","http://mlflow:5001")}')
-    logger.info(f'MLflow experiment set to: {os.getenv("MLFLOW_EXPERIMENT_NAME", "Plant_Classification_Experiment")}')
-
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
     # parameters for logging
     mlflow.log_param('model', 'VGG16')
@@ -126,13 +130,35 @@ def setup_mlflow_experiment():
     mlflow.log_metric('val_loss', 0, step=0)
     mlflow.log_metric('val_f1_score', 0, step=0)
 
+
+################################ production ###########################################
+# TODO: Erwin - for production we can use this code to load the best model retreived by get_best_model()
+#
+# # Get the best model
+# model_path, run_id, accuracy = get_best_model() 
+# if model_path:
+#    # Load the model
+#    best_model = mlflow.keras.load_model(model_path)
+#    
+#    # Copy the model to the production repository or deployment location
+#    production_path = "/path/to/production/model"  # path to be defined
+#   # Use appropriate methods for model transfer: shutil.copy, git operations, etc.
+#    
+#    print(f"Best model (accuracy: {accuracy:.4f}) deployed to production")
+# else:
+#     print("Failed to retrieve the best model")
+#########################################################################################
+
 # MAIN FUNCTION FOR TRAINING
-def train_model(): 
+def train_model(dataset_path: str = None): 
     '''
     Trains the model in two phases:
     1. Train only the classification head (with frozen base layers).
     2. Fine-tune the top layers of the base model with a smaller learning rate.
     3. Integrates MLflow to track scores (helpful if different training data is used; NOT TESTED YET)
+    
+    Arguments:
+    - dataset_path: ???
 
     Returns: None   
     
@@ -142,15 +168,12 @@ def train_model():
     setup_mlflow_experiment()
     
     # new insertion
-    train_data, train_records = load_tfrecord_data(
-        'data/training/train.tfrecord'
-    )
-    logger.info('Training data loaded ✅')
+    # TODO: Probably this could be part of the api, the path to the training data?
+    train_data, train_records = load_tfrecord_data('data/raw/train_subset6.tfrecord')
+    print('Training data loaded ✅')
 
-    val_data, val_records = load_tfrecord_data(
-        'data/training/valid.tfrecord'
-    )
-    logger.info('Validation data loaded ✅')
+    val_data, val_records = load_tfrecord_data('data/raw/valid_subset6.tfrecord')
+    print('Validation data loaded ✅')
 
     input_shape = (224, 224, 3)
 
@@ -164,24 +187,24 @@ def train_model():
         loss='categorical_crossentropy',
         metrics=['accuracy', F1Score(name='f1_score')]
     )
-    logger.info('Model built ✅')
+    print('Model built ✅')
 
     # logging in mlflow
-    # Starting MLflow
+    # INFO: Starting MLflow
     mlflow_logger = MLFlowLogger()
-    logger.info('MLflow logger started ✅')
+    print('MLflow logger started ✅')
 
-    logger.info('Training classification head...')
+    print('Training classification head...', end='\r')
     history_1 = model.fit(
         train_data, 
         validation_data=val_data, 
         epochs=int(EPOCHS*0.7), 
         callbacks=[mlflow_logger]
     )
-    logger.info('Training classification ended ✅')
+    print('Training classification ended ✅')
 
     # Step 2: Fine-tune the last layers of the base model
-    logger.info('Build fine-tuning model...')
+    print('Build fine-tuning model...', end='\r')
     tf.keras.backend.clear_session()
 
     # reinitializing optimizer
@@ -193,7 +216,7 @@ def train_model():
         trainable_base=True, 
         fine_tune_layers=4
     )
-    logger.info('Fine-tuning model built ✅')
+    print('Fine-tuning model built ✅')
 
     model.compile(
         optimizer=optimizer,
@@ -201,14 +224,14 @@ def train_model():
         metrics=['accuracy', F1Score(name='f1_score')]
     )
 
-    logger.info('Fine-tuning head...')
+    print('Fine-tuning head...', end='\r')
     history_2 = model.fit(
         train_data, 
         validation_data=val_data, 
         epochs=int(EPOCHS*0.3), 
         callbacks=[mlflow_logger]
     )
-    logger.info('Fine-tuning ended ✅')
+    print('Fine-tuning ended ✅')
 
     # saving mlflow loggs
     mlflow.keras.log_model(model, 'model')
@@ -216,15 +239,15 @@ def train_model():
     # saving locally for comparison
     os.makedirs('temp', exist_ok=True)
     model.save('temp/current_model.keras')
-    logger.info('Current model saved under temp/current_model.keras ✅')
+    print('Current model saved under temp/current_model.keras ✅')
 
     # write current val_accuracy to current_accuracy.txt
     with open('temp/current_accuracy.txt', 'w') as f:
         f.write(str(mlflow_logger.final_val_accuracy))
-    logger.info('Saved current final validation accuracy as temp/current_accuracy.txt ✅.')
+    print('Saved current final validation accuracy as temp/current_accuracy.txt ✅.')
 
     mlflow.end_run()
-    logger.info('Scores are saved with MLflow ✅.')
+    print('Scores are saved with MLflow ✅.')
 
     # Combine both training histories
     history = {
@@ -241,10 +264,23 @@ def train_model():
         json.dump(history, f)
         print(f'History saved in {HISTORY_PATH} ✅.')
 
-    logger.info('Training completed. ✅')
+    # make git commit for history 
+    # Git commit and push
+    repo_root = Path.cwd()
+    subprocess.run(
+        ['git', 'add', str(HISTORY_PATH)], 
+        cwd=repo_root, 
+        check=True
+    )
+    commit_msg = 'Updated history logs'
+    subprocess.run(
+        ['git', 'commit', '-m', commit_msg], 
+        cwd=repo_root, 
+        check=True
+    )
+    print('Training completed. ✅')
 
 if __name__ == '__main__':
-    create_data()
     train_model()
     result = update_model_if_better()
     print(f'Model management result: {result}')

@@ -6,156 +6,145 @@ import subprocess
 from dotenv import load_dotenv
 from pathlib import Path
 import tenacity
+import logging
 
-# Ensure script runs from this file path (or any of yours)
-os.chdir("/home/olaf_wauzi/deep_leaf")  # If main branch clone is elsewhere (e.g., /home/olaf_wauzi/deep_leaf_main), update this path
+# local imports
+from src.config import MODEL_DVC, DAGSHUB_REPO
+from src.model_and_data_tracking import track_model_and_data
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]  # Sends logs to stdout
+)
+logger = logging.getLogger(__name__)
 
 def load_environment():
-    """Load environment variables from .env file"""
+    """
+    Loads MLflow settings from .env file
+    
+    Returns:
+    - mlflow_url: URL of mlflow container 
+    - experiment_name: experiment name
+    """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     dotenv_path = os.path.join(script_dir, "..", ".env")
     
     if os.path.exists(dotenv_path):
         load_dotenv(dotenv_path, override=True)
-        print('.env file found and loaded ✅')
+        logger.info('.env file found and loaded ✅')
     else:
-        raise FileNotFoundError("Warning: .env file not found!")
+        raise FileNotFoundError("⛔️ Warning: .env file not found!")
     
-    username = os.getenv('DAGSHUB_USERNAME')
-    token = os.getenv('DAGSHUB_KEY')
+    mlflow_url = os.getenv('MLFLOW_TRACKING_URI')
+    experiment_name = os.getenv('MLFLOW_EXPERIMENT_NAME')
     
-    if not username or not token:
-        raise ValueError("DAGSHUB_USERNAME or DAGSHUB_KEY not set in .env")
+    if not mlflow_url or not experiment_name:
+        raise ValueError(
+            "MLFLOW_TRACKING_URI or MLFLOW_EXPERIMENT_NAME not set in .env"
+        )
     
-    os.environ['MLFLOW_TRACKING_USERNAME'] = username
-    os.environ['MLFLOW_TRACKING_PASSWORD'] = token
-    print(f"Loaded credentials - Username: {username}")
-    return username, token
+    logger.info(f'Loaded credentials:\n- URI: {mlflow_url}\n- Experiment name: {experiment_name}')
+    
+    return mlflow_url, experiment_name
 
-def get_best_model():
+def get_best_model(mlflow_url, experiment_name):
     """
     Retrieves the best model from MLFlow based on validation accuracy.
-    
+
+    Arguments:
+        - mlflow_uri: loaded MLflow URI from environment (str)
+        - experiment_name: loaded experiment name from environment (str)
     Returns:
         tuple: (model_path, best_val_accuracy, run_id)
     """
-    mlflow.set_tracking_uri('https://dagshub.com/schytze0/deep_leaf.mlflow')
-    mlflow.set_experiment('Plant_Classification_Experiment')
+
+    mlflow.set_tracking_uri(mlflow_url)
+    mlflow.set_experiment(experiment_name)
     
-    best_run = mlflow.search_runs(order_by=["metrics.val_accuracy DESC"]).head(1)
+    best_run = mlflow.search_runs(
+        order_by=["metrics.final_val_accuracy DESC"]
+    ).head(1)
     if best_run.empty:
-        print("No runs found in the experiment")
+        logger.info("No runs found in the experiment")
         return None, None, None
     
     run_id = best_run.iloc[0]['run_id']
-    best_val_accuracy = best_run.iloc[0]['metrics.val_accuracy']
-    print(f"Best run ID: {run_id}, Validation accuracy: {best_val_accuracy:.4f}")
+    best_val_accuracy = best_run.iloc[0]['metrics.final_val_accuracy']
+    
+    logger.info(f"Run ID: {run_id}, Validation accuracy: {best_val_accuracy:.4f}")
 
     model_uri = f"runs:/{run_id}/model"
-    local_model_path = mlflow.artifacts.download_artifacts(artifact_uri=model_uri)
-    print(f"Model downloaded to: {local_model_path}")
+    
+    local_model_path = mlflow.artifacts.download_artifacts(
+        artifact_uri=model_uri
+    )
+    logger.info(f"Model downloaded to: {local_model_path}")
     # Debug: List files to confirm structure
     artifact_files = list(Path(local_model_path).rglob("*"))
-    print(f"Artifact files: {artifact_files}")
+    logger.info(f"Artifact files: {artifact_files}")
     return local_model_path, best_val_accuracy, run_id
 
 def check_metadata_exists():
     """Check if metadata.txt exists in repo root and get its accuracy."""
     repo_root = Path.cwd()
-    metadata_path = repo_root / "metadata.txt"
-    dvc_pointer_path = repo_root / "models.dvc"
+
+    metadata_path = repo_root / "models/metadata.txt"
+
+    dvc_pointer_path = repo_root / f'models/{MODEL_DVC}'
     
     if metadata_path.exists():
         with open(metadata_path, "r") as f:
             try:
                 accuracy = float(f.read().strip())
-                print(f"Existing metadata found with accuracy: {accuracy:.4f}")
+                logger.info(f"Existing metadata found with accuracy: {accuracy:.4f}")
                 return True, accuracy
             except ValueError as e:
-                print(f"Malformed metadata.txt: {e}. Assuming accuracy 0.0")
+                logger.info(f"Malformed metadata.txt: {e}. Assuming accuracy 0.0")
                 return True, 0.0
     elif dvc_pointer_path.exists():
-        print("Found models.dvc but no metadata.txt; assuming accuracy 0.0")
+        logger.info(f"Found {MODEL_DVC} but no metadata.txt; assuming accuracy 0.0")
         return True, 0.0
     else:
-        print("No metadata.txt or models.dvc found; assuming initial accuracy of 0.0")
+        logger.info(f"No metadata.txt or {MODEL_DVC} found; assuming initial accuracy of 0.0")
         return False, 0.0
 
-@tenacity.retry(wait=tenacity.wait_exponential(multiplier=1, min=4, max=10), stop=tenacity.stop_after_attempt(3))
-def dvc_push(repo_root):
-    """Retry DVC push up to 3 times with exponential backoff."""
-    subprocess.run(["dvc", "push"], cwd=repo_root, check=True)
-    print("Pushed model to DVC remote")
-
-def upload_model_to_dagshub(username, token, model_artifact_path, val_accuracy, branch="dev-erwin"):  # change to branch="main"
+def overwrite_existing(model_artifact_path, val_accuracy):
     """
-    Copy the best model file into src/dev-erwin/models/, create a DVC pointer file (models.dvc)
-    and metadata.txt in the repo root, then commit and push changes.
+    Copy the best model file into /models/, create a DVC pointer file (models.dvc) and metadata.txt in the repo root.
     """
     repo_root = Path.cwd()
-    target_dir = repo_root / "src" / "dev-erwin" / "models"  # If main branch uses a different structure (e.g., src/models/), update to repo_root / "src" / "models".
+    
+    target_dir = repo_root / "models"  
     target_dir.mkdir(parents=True, exist_ok=True)
     
     # Directly fetch model.keras from the data/ subdirectory
-    source_model_file = Path(model_artifact_path) / "data" / "model.keras"
+    source_model_file = repo_root / "temp" / "current_model.keras"
     if not source_model_file.exists():
-        artifact_files = list(Path(model_artifact_path).rglob("*"))
-        print(f"Error: No model.keras found at {source_model_file}. Available files: {artifact_files}")
+        artifact_files = list(Path("app/temp/").rglob("*"))
+        logger.error(f"Error: No model.keras found at {source_model_file}. Available files: {artifact_files}")
         raise FileNotFoundError(f"No model.keras found in {model_artifact_path}/data")
     
-    dest_model_file = target_dir / "plant_disease_model.keras"
+    dest_model_file = repo_root / "models" / "production_model.keras"
     shutil.copy2(source_model_file, dest_model_file)
-    print(f"Copied model to {dest_model_file}")
-    
-    # Track with DVC
-    subprocess.run(["dvc", "add", dest_model_file], cwd=repo_root, check=True)
-    dvc_file = target_dir / "plant_disease_model.keras.dvc"
-    target_dvc_file = repo_root / "models.dvc"
-    shutil.move(dvc_file, target_dvc_file)
-    print(f"Moved DVC pointer to {target_dvc_file}")
-    
-    # Update metadata.txt in repo root
-    metadata_path = repo_root / "metadata.txt"
+    logger.info(f"Copied model to {dest_model_file}")
+
+     # Update metadata.txt in models (file is component of production model)
+    metadata_path = repo_root / "models" / "metadata.txt"
     with open(metadata_path, "w") as f:
         f.write(str(val_accuracy))
-    print(f"Updated {metadata_path} with accuracy: {val_accuracy:.4f}")
+    logger.info(f"Updated {metadata_path} with accuracy: {val_accuracy:.4f}")
     
-    # Git commit and push
-    subprocess.run(["git", "add", target_dvc_file, metadata_path], cwd=repo_root, check=True)
-    commit_msg = f"Update model with accuracy {val_accuracy:.4f}"
-    subprocess.run(["git", "commit", "-m", commit_msg], cwd=repo_root, check=True)
-    subprocess.run(["git", "push", "origin", branch], cwd=repo_root, check=True)
-    print("Pushed Git changes")
-    
-    # Configure DVC remote and push with retry
-    dvc_remote = "origin"
-    subprocess.run(["dvc", "remote", "add", "-f", "-d", dvc_remote, "https://dagshub.com/schytze0/deep_leaf.dvc"],
-                   cwd=repo_root, check=True)
-    subprocess.run(["dvc", "remote", "modify", dvc_remote, "--local", "auth", "basic"], cwd=repo_root, check=True)
-    subprocess.run(["dvc", "remote", "modify", dvc_remote, "--local", "user", username], cwd=repo_root, check=True)
-    subprocess.run(["dvc", "remote", "modify", dvc_remote, "--local", "password", token], cwd=repo_root, check=True)
-    try:
-        dvc_push(repo_root)
-    except Exception as e:
-        print(f"DVC push failed after retries: {e}")
-        raise
-    
-    return True
-
-def manual_upload_instructions(username, model_path, val_accuracy):
-    print("\n=== MANUAL UPLOAD INSTRUCTIONS ===")
-    print(f"1. Locate model.keras in: {model_path}/data")
-    print("2. Rename to 'plant_disease_model.keras' and move to 'src/dev-erwin/models/'")  # If main branch uses src/models/, update to 'src/models/'.
-    print("3. Run: dvc add src/dev-erwin/models/plant_disease_model.keras")  # If main branch uses src/models/, update to 'dvc add src/models/plant_disease_model.keras'.
-    print(f"4. Create/update metadata.txt with: {val_accuracy}")
-    print("5. Run: git add models.dvc metadata.txt")
-    print("6. Run: git commit -m 'Update model' && git push origin dev-erwin")  # Change "dev-erwin" to "main" after merging into main branch.
-    print("7. Run: dvc push")
-    print("===============================\n")
 
 def update_model_if_better():
-    username, token = load_environment()
-    best_model_path, best_val_accuracy, run_id = get_best_model()
+    try:
+        mlflow_url, experiment_name = load_environment()
+    except ValueError as e:
+        return str(e)
+
+    # Get the path and the val_accuracy of the best model of the finished training    
+    best_model_path, best_val_accuracy, run_id = get_best_model(mlflow_url, experiment_name)
     
     if not best_model_path:
         return "No models found in MLFlow experiments"
@@ -166,15 +155,15 @@ def update_model_if_better():
     if not exists or best_val_accuracy > existing_accuracy:
         action = "Created" if not exists else "Updated"
         try:
-            upload_model_to_dagshub(username, token, best_model_path, best_val_accuracy)
-            return f"Model {action.lower()} - New accuracy: {best_val_accuracy:.4f}" + \
-                   (f", Previous: {existing_accuracy:.4f}" if exists else "")
+            overwrite_existing(best_model_path, best_val_accuracy)
+            track_model_and_data()
+            return f"Model {action.lower()} - New accuracy: {best_val_accuracy:.4f}" + (f", Previous: {existing_accuracy:.4f}" if exists else "")
         except Exception as e:
-            print(f"Error during upload: {e}")
-            manual_upload_instructions(username, best_model_path, best_val_accuracy)
+            logger.info(f"Error during upload: {e}")
             return f"Failed to {action.lower()} model; see manual instructions"
-    return f"No change - Existing accuracy ({existing_accuracy:.4f}) >= New ({best_val_accuracy:.4f})"
+    else: 
+        return f"No change - Existing accuracy ({existing_accuracy:.4f}) >= Current ({best_val_accuracy:.4f})"
 
 if __name__ == "__main__":
     result = update_model_if_better()
-    print(f"Model management result: {result}")
+    logger.info(f"Model management result: {result}")
