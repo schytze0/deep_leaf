@@ -3,12 +3,11 @@
 ## 📌 Overview
 **Deep Leaf** is a deep learning-based **image classification pipeline** for detecting plant diseases using **Transfer Learning (VGG16)**. It follows **MLOps best practices**, enabling:
 - **FastAPI access**
+- **Containerization with Docker**
 - **MLflow tracking**
 - **Airflow orchestration**
-- **CI/CD with Github**
+- **CI/CD with Github Actions**
 
-## Context??
-DO WE NEED THIS?
 
 ## 📂 Repository Structure
 
@@ -133,7 +132,7 @@ The original data stems from [Kaggle (New Plant Diseases Dataset)](https://www.k
 
 ## 🧑‍💻 Project Diagram
 
-![Projekt worklfow implementation](architecture.excalidraw.png)
+![Projekt worklfow implementation](MLOps_infrastructure.png)
 
 ## Application Operation
 
@@ -194,7 +193,7 @@ The project uses a containerized architecture with the following breakdown and f
     - used to run web app services (swagger UI)
     - mounted volumes: the entire root directory
     - depends on MLflow service (in order to fetch artifacts and experiment related data)
-    - exposes pot 8001 (mapped 800 internally)
+    - exposes pot 8001 (mapped 8000 internally)
 - Airflow services, consists of the standard components:
     - `airflow-webserver`: Web interface for Airflow which exposes port 8080
     - `airflow-scheduler`: Manages DAG scheduling
@@ -239,7 +238,7 @@ The project uses a containerized architecture with the following breakdown and f
 
 
 Here is an overview:
-![Docker Compose Architecture](docker_architecture.png)
+![Docker Compose Architecture](docker_architecture1.png)
 
 ### MLflow
 This project integrates MLflow to track model training, log hyperparameters, and store artifacts for versioning and reproducibility.
@@ -301,3 +300,52 @@ Using a DAG to run model training for the project with the following Functionali
 - Leverages Docker socket for container management
 - Enables reproducible and isolated model training workflows
 
+### CI/CD Pipeline with GitHub Actions
+
+Below is a high-level overview of the Continuous Integration (CI) and Continuous Deployment (CD) pipeline, as depicted in the diagram:
+
+![Docker Compose Architecture](CI-CD_pipeline.png)
+
+---
+
+#### Continuous Integration (CI)
+
+**Trigger:** On every push to any branch of the GitHub repository.
+
+**Steps:**
+
+1. **Linting (flake8)**
+   - Validate Python code style and consistency using `flake8`.
+   - Catch syntax errors, unused imports, or other code-quality issues.
+2. **Unit Tests (pytest)**
+   - Run test suites using `pytest` to ensure code functionality and logic.
+   - Generate test reports (or coverage reports) to verify application stability.
+3. **Image Build (Docker Compose)**
+   - Build a Docker image of the application using Docker Compose.
+   - Ensure the application can be containerized successfully without errors.
+
+Overall, if any step fails (linting, testing, or image build), the workflow is marked as failed and notifies the developer.
+
+---
+
+#### Continuous Deployment (CD)
+
+**Trigger:** On every push specifically to the **main** branch of the repository.
+
+**Steps:**
+
+1. **Linting (flake8)**
+   - Same as in CI: enforce style guidelines and code consistency.
+2. **Unit Tests (pytest)**
+   - Same as in CI: verify application logic through automated tests.
+3. **Image Build (Docker Compose)**
+   - Same Docker build process as in CI.
+   - This ensures the image that will be deployed is production-ready.
+4. **Deploy Image (Docker Hub)**
+   - Upon successful build, the Docker image is pushed to a Docker Registry (Docker Hub).
+   - Facilitates deployment to production or other environments.
+
+Once the build is pushed to Docker Hub, downstream environments can pull the latest image automatically or on-demand.
+
+This pipeline ensures that every code change is linted, tested, and containerized. 
+Only changes on the main branch will move on to the deployment step, publishing the Docker image for use in production or further integration.
