@@ -25,7 +25,7 @@ dag = DAG(
     tags=['airflow', 'deep_leaf'],
     default_args=default_args,
     description='Train model in fastapi-app container',
-    schedule_interval='0 23 * * *',  # for daily at 11pm use: '0 23 * * *'
+    schedule_interval='0 22 * * *',  # for daily at 10pm use: '0 22 * * *'
     catchup=False,
     max_active_runs=1,
 )
