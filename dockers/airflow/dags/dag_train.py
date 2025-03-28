@@ -9,6 +9,8 @@ host_repo_path = os.getenv("REPO_ROOT")
 if not host_repo_path:
     raise ValueError("REPO_ROOT environment variable not set!")
 
+ssh_folder_path = os.path.join(host_repo_path, "ssh")
+
 # Default arguments for the DAG
 default_args = {
     'owner': 'airflow',
@@ -40,7 +42,9 @@ train_model = DockerOperator(
     network_mode='bridge',
     working_dir='/app',
     do_xcom_push=True,
-    mounts=[Mount(source=host_repo_path, target='/app', type='bind')],
+    mounts=[Mount(source=host_repo_path, target='/app', type='bind'),
+            Mount(source=ssh_folder_path, target="/root/.ssh", type="bind")
+            ],
     mount_tmp_dir=False,
     dag=dag,
 )
