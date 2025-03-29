@@ -11,16 +11,20 @@
 
 ## 📂 Repository Structure
 
-We saved all necessary files for the python runs into the folder `src/`. To use these scripts in the FastAPI (folder `app/`), we create a local package of `src` that is built during installing the requirements (`requirements.txt` or `requirements_mac.txt`). 
-The `data/` is once build with the script `raw_data_split.py` and then saved into `data/raw`. Since we simulate new data by adding to the first data set the each of the other data splits (up to 10) we create two new files `train.tfrecord` and `valid.tfrecord` that are saved in `data/training/`.
+We saved all necessary files for the python runs into the folder `src/`. To use these scripts in the FastAPI (folder `app/`), we create a local package of `src` that is built during installing the requirements (`requirements.txt`, `requirements_mac.txt`, and `requirements_wsl2.txt`). 
+The `data/` is once build with the script `raw_data_split.py` and then saved into `data/raw/`. Since we simulate new data by adding to the first data set the each of the other data splits (up to 10) we create two new files `train.tfrecord` and `valid.tfrecord` that are saved in `data/training/`. The raw files for testing can be found in `data/test/`.
 In `model/`, you can find the current production model (`production_model.keras`) as well as metadata (final validation accuracy score, `metadata.txt`).
 In `app/`, you find the creation of the FastAPI.
 In `mlflow/`, you can find the creation of the MLflow container. 
-In `tests/`, you can find simple test scripts for the unit tests.
+In `tests/`, you can find simple test scripts.
+In `dockers/`, you can find the containerization of the Airflow, FastAPI, and MLflow service. 
 There are some helper files:
-- `setup.py`: for creation of the package `src` to reference them in `app/`
-- `architecture.excalidraw`: visualization of (ongoing) workflow
+- `CI-CD_pipeline.png`: visualization of CI/CD process
+- `docker_architecture1.png`: visualization of containerization
 - `merge_progress.json`: A file to check how far we have been so far with the new data simulation 
+- `MLOps_infrastructure.png`: visualization of the MLOps infrastructure
+- `setup.py`: for creation of the package `src` to reference them in `app/`
+
 
 ```plaintext
 .
@@ -29,7 +33,6 @@ There are some helper files:
 ├── app
 │   ├── __init__.py
 │   └── main.py
-├── architecture.excalidraw.png
 ├── data
 │   ├── raw
 │   │   ├── train_subset1.tfrecord
@@ -93,6 +96,7 @@ There are some helper files:
 │   └── artifacts
 │       └── ...
 ├── mlflow.dvc
+├── MLOps_infrastructure.png
 ├── models
 │   ├── metadata.txt
 │   ├── production_model.keras
@@ -124,7 +128,10 @@ There are some helper files:
 │   └── current_model.keras
 └── tests
     ├── api_server.py
-    └── mlflow_server.py
+    ├── mlflow_server.py
+    ├── requirements_CI-CD.txt
+    ├── test_api.py
+    └── test_load_model.py
 ```
 
 ## 📈 Data
